@@ -1,0 +1,635 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>3인 오델로 : 매칭 & AI 시스템</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
+        body { font-family: 'Inter', sans-serif; background-color: #f0f2f5; }
+        .cell { transition: all 0.2s; }
+        .cell:hover:not(.claimed) { transform: scale(1.05); cursor: pointer; }
+        .red { background-color: #ef4444; }
+        .yellow { background-color: #facc15; }
+        .blue { background-color: #3b82f6; }
+        .red-light { background-color: #fca5a5; }
+        .yellow-light { background-color: #fde68a; }
+        .blue-light { background-color: #93c5fd; }
+        .cell-player-color { aspect-ratio: 1/1; min-width: 40px; }
+        
+        /* 대기열 리스트 애니메이션 */
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+        .queue-item { animation: fadeIn 0.3s ease-out forwards; }
+    </style>
+</head>
+<body class="flex flex-col items-center justify-center min-h-screen p-4 text-gray-800">
+
+    <div id="game-container" class="w-full max-w-5xl bg-white shadow-xl rounded-2xl p-6 md:p-8 flex flex-col md:flex-row gap-8">
+        
+        <div class="flex-1 flex flex-col">
+            <h1 class="text-3xl font-extrabold text-center text-gray-900 mb-2">3인 오델로 (5x5)</h1>
+            <p class="text-center text-gray-500 text-sm mb-6">색을 많이 차지하여 승리하세요!</p>
+            
+            <div class="flex justify-between items-center bg-gray-100 rounded-xl p-4 mb-6 shadow-inner">
+                <div>
+                    <p class="text-xs text-gray-500">나의 상태</p>
+                    <p class="font-bold text-lg text-blue-600" id="my-status">대기 중</p>
+                </div>
+                <div class="text-right">
+                    <p class="text-xs text-gray-500">남은 시간</p>
+                    <p class="font-mono font-bold text-2xl text-red-500" id="timer-display">--</p>
+                </div>
+            </div>
+
+            <div class="flex justify-center mb-6">
+                <div id="game-board" class="grid grid-cols-5 gap-1.5 bg-gray-300 p-3 rounded-xl shadow-lg w-full max-w-[400px]">
+                    <div class="col-span-5 text-center text-gray-500 py-10">매칭을 시작해주세요.</div>
+                </div>
+            </div>
+
+            <div class="mt-auto space-y-3">
+                <button id="join-queue-btn" 
+                        class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-4 rounded-xl shadow-lg transition transform hover:-translate-y-1 disabled:opacity-50 disabled:translate-y-0">
+                    🔍 매칭 시작 (대기열 참가)
+                </button>
+                <button id="force-ai-btn" 
+                        class="w-full bg-white border-2 border-gray-300 hover:bg-gray-50 text-gray-700 font-bold py-3 rounded-xl transition hidden">
+                    🤖 기다리기 힘들어요 (AI와 바로 시작)
+                </button>
+            </div>
+        </div>
+
+        <div class="w-full md:w-80 flex flex-col gap-6 border-l border-gray-200 md:pl-8">
+            
+            <div class="bg-gray-50 p-4 rounded-xl border border-gray-100">
+                <p class="text-xs text-gray-400 font-bold uppercase mb-1">My Profile</p>
+                <p class="text-sm text-gray-600 break-all">ID: <span id="my-user-id" class="font-mono">Connecting...</span></p>
+                <p class="text-sm font-bold mt-1">Color: <span id="my-color-display" class="text-gray-400">지정 안됨</span></p>
+            </div>
+
+            <div class="flex-1 bg-blue-50 p-4 rounded-xl border border-blue-100 flex flex-col h-64 md:h-auto overflow-hidden">
+                <div class="flex justify-between items-center mb-3">
+                    <h3 class="font-bold text-blue-800">🏃 대기열 현황</h3>
+                    <span id="queue-count" class="bg-blue-200 text-blue-800 text-xs px-2 py-1 rounded-full font-bold">0명</span>
+                </div>
+                <div id="queue-list" class="flex-1 overflow-y-auto space-y-2 pr-1 custom-scrollbar">
+                    <p class="text-gray-400 text-sm text-center py-4">대기 중인 플레이어가 없습니다.</p>
+                </div>
+                <p class="text-xs text-blue-400 text-center mt-2">3명이 모이면 자동 시작!</p>
+            </div>
+
+            <div class="bg-gray-50 p-4 rounded-xl border border-gray-100">
+                <h3 class="font-bold text-gray-700 mb-2">🏆 점수판</h3>
+                <ul id="score-list" class="space-y-2 text-sm">
+                    <li class="text-gray-400">게임 시작 전</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <div id="message-modal" class="hidden fixed inset-0 bg-black/50 flex items-center justify-center z-50 backdrop-blur-sm">
+        <div class="bg-white p-6 rounded-2xl shadow-2xl text-center max-w-sm w-full mx-4 transform transition-all scale-100">
+            <h3 id="modal-title" class="text-xl font-bold mb-2 text-gray-900">알림</h3>
+            <p id="modal-content" class="text-gray-600 mb-6"></p>
+            <button onclick="closeModal()" class="w-full bg-gray-900 text-white font-bold py-3 rounded-xl hover:bg-gray-800">확인</button>
+        </div>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { 
+            getFirestore, doc, setDoc, updateDoc, deleteDoc, onSnapshot, collection, 
+            query, where, getDocs, runTransaction, serverTimestamp, orderBy, limit 
+        } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // --- 설정 ---
+        const BOARD_SIZE = 5;
+        const COLORS = ['R', 'Y', 'B']; 
+        const COLOR_MAP = {
+            'R': { code: 'red', light: 'red-light', label: '빨강' },
+            'Y': { code: 'yellow', light: 'yellow-light', label: '노랑' },
+            'B': { code: 'blue', light: 'blue-light', label: '파랑' },
+        };
+        const MAX_PLAYERS = 3;
+        
+        // Firebase Config
+        const firebaseConfig = {
+            apiKey: "AIzaSyA1DEzZvw6_63cLUk_YeWYRInZ0drIzd5Q",
+            authDomain: "color-a6d38.firebaseapp.com",
+            projectId: "color-a6d38",
+            storageBucket: "color-a6d38.firebasestorage.app",
+            messagingSenderId: "761735384766",
+            appId: "1:761735384766:web:cc52566ccafac650a558ef"
+        };
+        const appId = 'Color-Game-V2'; // V2 Namespace for queue system
+
+        // Globals
+        let app, db, auth, userId;
+        let queueDocId = null; // My queue ticket ID
+        let gameId = null;
+        let myColor = null;
+        let unsubscribeQueue = null;
+        let unsubscribeGame = null;
+        let unsubscribeMyTicket = null; // Listen to my own queue ticket for match info
+
+        // UI Elements
+        const joinBtn = document.getElementById('join-queue-btn');
+        const aiBtn = document.getElementById('force-ai-btn');
+        const queueListEl = document.getElementById('queue-list');
+        const queueCountEl = document.getElementById('queue-count');
+        const boardElement = document.getElementById('game-board');
+        const myStatusEl = document.getElementById('my-status');
+        const timerDisplay = document.getElementById('timer-display');
+        const scoreList = document.getElementById('score-list');
+
+        // Game State
+        let currentBoardState = [];
+        let selectedCell = null;
+        let isResolving = false;
+        let timerInterval = null;
+
+        // --- 초기화 ---
+        async function init() {
+            app = initializeApp(firebaseConfig);
+            db = getFirestore(app);
+            auth = getAuth(app);
+            await signInAnonymously(auth);
+            
+            onAuthStateChanged(auth, (user) => {
+                if (user) {
+                    userId = user.uid;
+                    document.getElementById('my-user-id').textContent = userId.substring(0, 8) + '...';
+                    joinBtn.disabled = false;
+                    
+                    // 대기열 전체 현황은 항상 보여줌 (참가 안했어도)
+                    watchQueueList(); 
+                }
+            });
+        }
+        window.onload = init;
+
+        // --- 대기열(Queue) 로직 ---
+
+        // 1. 대기열 참가
+        joinBtn.addEventListener('click', async () => {
+            if (!userId) return;
+            joinBtn.disabled = true;
+            joinBtn.textContent = "매칭 중...";
+            aiBtn.classList.remove('hidden'); // AI 버튼 보이기
+            myStatusEl.textContent = "대기열 진입";
+
+            try {
+                // Queue 컬렉션에 내 티켓 생성
+                const queueRef = collection(db, 'artifacts', appId, 'public', 'data', 'queue');
+                const ticketRef = doc(queueRef, userId); // Use userId as doc ID for simplicity
+                
+                await setDoc(ticketRef, {
+                    userId: userId,
+                    joinedAt: serverTimestamp(),
+                    matchId: null // 매칭되면 게임 ID가 여기 적힘
+                });
+                
+                queueDocId = userId;
+                
+                // 내 티켓 감시 (매칭 성공 여부 확인)
+                watchMyTicket(ticketRef);
+
+            } catch (e) {
+                console.error(e);
+                alert("대기열 참가 실패");
+                resetUI();
+            }
+        });
+
+        // 2. 내 티켓 감시 및 매칭 확인
+        function watchMyTicket(docRef) {
+            unsubscribeMyTicket = onSnapshot(docRef, (docSnap) => {
+                if (!docSnap.exists()) {
+                    // 누군가(혹은 나)에 의해 큐에서 제거됨 -> 게임 시작 혹은 취소
+                    // (여기서는 matchId가 업데이트되는 방식을 사용하므로 삭제는 게임 참가 후 처리)
+                    return;
+                }
+                const data = docSnap.data();
+                if (data.matchId) {
+                    // 매칭 성공!
+                    console.log("매칭 성공! 게임 ID:", data.matchId);
+                    enterGame(data.matchId);
+                }
+            });
+        }
+
+        // 3. 전체 대기열 감시 & 자동 매칭 트리거 (핵심 로직)
+        function watchQueueList() {
+            const queueRef = collection(db, 'artifacts', appId, 'public', 'data', 'queue');
+            const q = query(queueRef, orderBy('joinedAt', 'asc'));
+
+            unsubscribeQueue = onSnapshot(q, (snapshot) => {
+                const docs = snapshot.docs;
+                renderQueueList(docs);
+
+                // *** 매칭 로직 (클라이언트 사이드) ***
+                // 내가 대기열에 있고, 대기열 인원이 3명 이상일 때
+                // "동시성 제어"를 위해, 정렬된 목록의 **3번째 사람**이 총대를 메고 게임을 생성함.
+                if (queueDocId && docs.length >= 3) {
+                    const top3 = docs.slice(0, 3);
+                    const myIndex = top3.findIndex(d => d.id === userId);
+                    
+                    // 내가 3명 중 3번째 사람(인덱스 2)이라면 게임 생성 트리거
+                    if (myIndex === 2) {
+                        createMatchedGame(top3);
+                    }
+                }
+            });
+        }
+
+        // 4. 매칭된 게임 생성 (3번째 사람이 실행)
+        async function createMatchedGame(usersDocs) {
+            console.log("3명이 모여 매칭을 시작합니다. 호스트:", userId);
+            
+            // 새 게임 ID 생성
+            const gamesRef = collection(db, 'artifacts', appId, 'public', 'data', 'games');
+            const newGameRef = doc(gamesRef);
+            const newGameId = newGameRef.id;
+
+            const playersData = {};
+            const playerOrder = [];
+            
+            usersDocs.forEach((d, idx) => {
+                const uid = d.data().userId;
+                playersData[uid] = {
+                    color: COLORS[idx], // 순서대로 색깔 배정
+                    isAI: false,
+                    score: 0,
+                    lastMove: null
+                };
+                playerOrder.push(uid);
+            });
+
+            // 초기 보드
+            const initialBoard = Array(BOARD_SIZE).fill(0).map(() => Array(BOARD_SIZE).fill(''));
+
+            // Transaction: 게임 생성 + 큐의 유저들에게 matchId 부여
+            try {
+                await runTransaction(db, async (transaction) => {
+                    // 1. 게임 문서 생성
+                    transaction.set(newGameRef, {
+                        status: 'playing', // 바로 시작
+                        turn: 1,
+                        timer: 5,
+                        board: JSON.stringify(initialBoard),
+                        players: playersData,
+                        playerOrder: playerOrder,
+                        hostId: userId, // 3번째 사람이 임시 호스트
+                        createdAt: serverTimestamp()
+                    });
+
+                    // 2. 대기열 유저들에게 신호 보내기 (matchId 업데이트)
+                    for (const d of usersDocs) {
+                        const qRef = doc(db, 'artifacts', appId, 'public', 'data', 'queue', d.id);
+                        transaction.update(qRef, { matchId: newGameId });
+                    }
+                });
+            } catch (e) {
+                console.error("매칭 생성 트랜잭션 실패:", e);
+            }
+        }
+
+        // 5. AI와 바로 시작 (강제 시작)
+        aiBtn.addEventListener('click', async () => {
+            if (!queueDocId) return;
+            
+            if(!confirm("현재 대기열에서 나가고 AI와 게임을 시작하시겠습니까?")) return;
+
+            // 큐에서 나감
+            await leaveQueue();
+            
+            // 솔로 게임 생성
+            await createSoloGame();
+        });
+
+        async function leaveQueue() {
+             if (queueDocId) {
+                await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'queue', queueDocId));
+                if(unsubscribeMyTicket) unsubscribeMyTicket();
+                queueDocId = null;
+            }
+        }
+
+        async function createSoloGame() {
+            const gamesRef = collection(db, 'artifacts', appId, 'public', 'data', 'games');
+            const newGameRef = doc(gamesRef);
+            const initialBoard = Array(BOARD_SIZE).fill(0).map(() => Array(BOARD_SIZE).fill(''));
+            
+            // 나 + AI 2명
+            const playersData = {
+                [userId]: { color: 'R', isAI: false, score: 0, lastMove: null },
+                'AI_Y': { color: 'Y', isAI: true, score: 0, lastMove: null },
+                'AI_B': { color: 'B', isAI: true, score: 0, lastMove: null }
+            };
+
+            await setDoc(newGameRef, {
+                status: 'playing',
+                turn: 1,
+                timer: 5,
+                board: JSON.stringify(initialBoard),
+                players: playersData,
+                playerOrder: [userId, 'AI_Y', 'AI_B'],
+                hostId: userId,
+                createdAt: serverTimestamp()
+            });
+
+            enterGame(newGameRef.id);
+        }
+
+        // --- 게임 진입 및 로직 ---
+
+        async function enterGame(id) {
+            gameId = id;
+            
+            // 큐 정리 (매칭되어서 들어가는 경우, 내 티켓 삭제)
+            // 주의: 다른 사람 티켓은 건드리지 않음 (각자가 자기꺼 삭제하거나 나중에 정리)
+            // 여기서는 깔끔하게 내것만 지우고 진입
+            await leaveQueue();
+
+            // UI 전환
+            joinBtn.classList.add('hidden');
+            aiBtn.classList.add('hidden');
+            queueListEl.parentElement.classList.add('hidden'); // 대기열 숨김 (선택사항)
+            document.getElementById('game-container').classList.remove('max-w-5xl');
+            document.getElementById('game-container').classList.add('max-w-4xl'); // 사이즈 조정
+
+            myStatusEl.textContent = "게임 접속 중...";
+
+            // 게임 리스너
+            unsubscribeGame = onSnapshot(doc(db, 'artifacts', appId, 'public', 'data', 'games', gameId), (docSnap) => {
+                if(!docSnap.exists()) {
+                    alert("게임이 종료되었습니다.");
+                    location.reload();
+                    return;
+                }
+                handleGameUpdate(docSnap.data());
+            });
+        }
+
+        // --- 기존 게임 로직 (보드 처리, 타이머, AI 등) ---
+        // (이전 코드의 핵심 로직을 그대로 가져오되 UI 연결 부분 최적화)
+
+        function handleGameUpdate(gameData) {
+            // 1. 내 정보 확인
+            const myData = gameData.players[userId];
+            if (myData) {
+                myColor = myData.color;
+                const cInfo = COLOR_MAP[myColor];
+                myStatusEl.innerHTML = `<span class="text-${cInfo.code}-600 font-bold">${cInfo.label}</span> 플레이어`;
+                document.getElementById('my-color-display').textContent = cInfo.label;
+                document.getElementById('my-color-display').className = `font-bold text-${cInfo.code}-600`;
+            } else {
+                myStatusEl.textContent = "관전 중";
+            }
+
+            // 2. 보드 렌더링
+            currentBoardState = JSON.parse(gameData.board);
+            renderBoard(currentBoardState, gameData);
+
+            // 3. 점수판
+            renderScoreboard(gameData.players);
+
+            // 4. 상태 처리
+            if (gameData.status === 'playing') {
+                timerDisplay.textContent = gameData.timer;
+                
+                // 호스트(방장)가 타이머 및 턴 처리 담당
+                if (userId === gameData.hostId) {
+                    manageHostLogic(gameData);
+                }
+            } else if (gameData.status === 'finished') {
+                timerDisplay.textContent = "END";
+                showWinner(gameData.players);
+            }
+        }
+
+        // 호스트 로직 (타이머 + 턴 종료 + AI)
+        function manageHostLogic(gameData) {
+            // 타이머 작동 (로컬에서 인터벌 돌리며 DB 업데이트)
+            // *최적화: 매초 DB 쓰기는 비용이 큼. 실제 서비스에선 TimeStamp 비교 방식 사용 권장.
+            // 여기선 기존 로직 유지하되 중복 실행 방지
+            
+            if (!timerInterval && gameData.timer > 0) {
+                let timeLeft = gameData.timer;
+                timerInterval = setInterval(async () => {
+                    timeLeft--;
+                    // UI 즉시 업데이트 (호스트만)
+                    // timerDisplay.textContent = timeLeft; 
+                    
+                    if (timeLeft >= 0) {
+                         // DB 업데이트 (다른 사람들에게 시간 전파)
+                         await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'games', gameId), { timer: timeLeft });
+                    }
+
+                    if (timeLeft <= 0) {
+                        clearInterval(timerInterval);
+                        timerInterval = null;
+                        if (!isResolving) resolveTurn(gameData);
+                    }
+                }, 1000);
+            }
+        }
+
+        async function resolveTurn(gameData) {
+            isResolving = true;
+            timerDisplay.textContent = "판정";
+
+            let board = JSON.parse(gameData.board);
+            // Deep copy board
+            board = board.map(row => [...row]);
+
+            const players = gameData.players;
+            let moves = [];
+
+            // 1. 플레이어 & AI 움직임 수집
+            // AI 움직임 생성 (호스트가 대신 수행)
+            for (const pid in players) {
+                const p = players[pid];
+                if (p.isAI) {
+                    const aiMove = getRandomMove(board);
+                    if (aiMove) moves.push({ id: pid, color: p.color, r: aiMove.r, c: aiMove.c });
+                } else if (p.lastMove) {
+                    moves.push({ id: pid, color: p.color, r: p.lastMove.r, c: p.lastMove.c });
+                }
+            }
+
+            // 2. 충돌 처리 (같은 칸 2명 이상이면 무효)
+            const posCounts = {};
+            moves.forEach(m => { const key = `${m.r},${m.c}`; posCounts[key] = (posCounts[key] || 0) + 1; });
+            const validMoves = moves.filter(m => posCounts[`${m.r},${m.c}`] === 1 && board[m.r][m.c] === '');
+
+            // 3. 보드 적용 & 오델로 룰
+            validMoves.forEach(m => {
+                board[m.r][m.c] = m.color;
+                applyOthello(board, m.r, m.c, m.color);
+            });
+
+            // 4. 점수 계산
+            let newScores = {};
+            let filled = 0;
+            for(let r=0; r<BOARD_SIZE; r++) {
+                for(let c=0; c<BOARD_SIZE; c++) {
+                    const cell = board[r][c];
+                    if(cell) {
+                        newScores[cell] = (newScores[cell] || 0) + 1;
+                        filled++;
+                    }
+                }
+            }
+
+            // 5. 플레이어 상태 업데이트
+            const updatedPlayers = {};
+            for (const pid in players) {
+                updatedPlayers[pid] = {
+                    ...players[pid],
+                    lastMove: null, // 초기화
+                    score: newScores[players[pid].color] || 0
+                };
+            }
+
+            const isEnd = filled >= (BOARD_SIZE * BOARD_SIZE);
+
+            // 6. DB 저장
+            await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'games', gameId), {
+                board: JSON.stringify(board),
+                players: updatedPlayers,
+                turn: gameData.turn + 1,
+                timer: 5, // 시간 리셋
+                status: isEnd ? 'finished' : 'playing'
+            });
+
+            isResolving = false;
+        }
+
+        // 보드 클릭 (플레이어 액션)
+        window.handleCellClick = async (r, c) => {
+            if (!gameId || !myColor || isResolving) return;
+            if (currentBoardState[r][c] !== '') return;
+
+            // 시각적 피드백
+            selectedCell = { r, c };
+            renderBoard(currentBoardState, { status: 'playing' }); // 재렌더링으로 테두리 표시
+
+            // 서버 전송
+            await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'games', gameId), {
+                [`players.${userId}.lastMove`]: { r, c }
+            });
+        };
+
+        // --- 유틸리티 & 렌더링 ---
+
+        function renderQueueList(docs) {
+            queueCountEl.textContent = `${docs.length}명`;
+            queueListEl.innerHTML = '';
+            
+            if (docs.length === 0) {
+                queueListEl.innerHTML = '<p class="text-gray-400 text-sm text-center py-4">대기 중인 플레이어가 없습니다.</p>';
+                return;
+            }
+
+            docs.forEach(d => {
+                const isMe = d.id === userId;
+                const el = document.createElement('div');
+                el.className = `queue-item p-2 rounded-lg text-sm flex justify-between items-center ${isMe ? 'bg-blue-200 border border-blue-300 shadow-sm' : 'bg-white border border-gray-100'}`;
+                el.innerHTML = `
+                    <span class="font-mono ${isMe ? 'font-bold text-blue-700' : 'text-gray-600'}">
+                        ${isMe ? '나 (Me)' : d.id.substring(0, 6) + '..'}
+                    </span>
+                    <span class="text-xs text-gray-400">대기중</span>
+                `;
+                queueListEl.appendChild(el);
+            });
+        }
+
+        function renderBoard(board, gameData) {
+            boardElement.innerHTML = '';
+            for (let r = 0; r < BOARD_SIZE; r++) {
+                for (let c = 0; c < BOARD_SIZE; c++) {
+                    const cellVal = board[r][c];
+                    const div = document.createElement('div');
+                    div.className = `cell cell-player-color rounded-md flex items-center justify-center shadow-sm ${cellVal ? 'claimed' : 'bg-white'}`;
+                    
+                    if (cellVal) {
+                        div.classList.add(COLOR_MAP[cellVal].code);
+                    } else if (gameData.status === 'playing' && myColor) {
+                        div.onclick = () => window.handleCellClick(r, c);
+                        // 내 선택 표시
+                        if (selectedCell && selectedCell.r === r && selectedCell.c === c) {
+                             div.classList.add('ring-4', 'ring-gray-800', COLOR_MAP[myColor].light);
+                        }
+                    }
+                    boardElement.appendChild(div);
+                }
+            }
+        }
+
+        function renderScoreboard(players) {
+            scoreList.innerHTML = '';
+            const list = Object.values(players).sort((a,b) => b.score - a.score);
+            list.forEach(p => {
+                const li = document.createElement('li');
+                li.className = "flex justify-between items-center p-2 rounded bg-white shadow-sm";
+                li.innerHTML = `
+                    <span class="flex items-center gap-2">
+                        <div class="w-3 h-3 rounded-full bg-${COLOR_MAP[p.color].code}-500"></div>
+                        <span class="${p.color === myColor ? 'font-bold' : ''}">${p.isAI ? 'AI' : 'Player'}</span>
+                    </span>
+                    <span class="font-bold text-lg">${p.score}</span>
+                `;
+                scoreList.appendChild(li);
+            });
+        }
+        
+        // 오델로 알고리즘 (8방향 뒤집기)
+        function applyOthello(board, r, c, color) {
+            const dirs = [[-1,0],[1,0],[0,-1],[0,1],[-1,-1],[-1,1],[1,-1],[1,1]];
+            dirs.forEach(([dr, dc]) => {
+                let nr = r + dr, nc = c + dc, flippable = [];
+                while(nr>=0 && nr<BOARD_SIZE && nc>=0 && nc<BOARD_SIZE) {
+                    if(board[nr][nc] === '') break;
+                    if(board[nr][nc] === color) {
+                        flippable.forEach(f => board[f.r][f.c] = color);
+                        break;
+                    }
+                    flippable.push({r:nr, c:nc});
+                    nr += dr; nc += dc;
+                }
+            });
+        }
+
+        function getRandomMove(board) {
+            let empties = [];
+            for(let r=0; r<BOARD_SIZE; r++) 
+                for(let c=0; c<BOARD_SIZE; c++) 
+                    if(board[r][c] === '') empties.push({r,c});
+            return empties.length ? empties[Math.floor(Math.random()*empties.length)] : null;
+        }
+
+        function showWinner(players) {
+             const winner = Object.values(players).sort((a, b) => b.score - a.score)[0];
+             const myScore = players[userId]?.score || 0;
+             const isWin = players[userId] && winner.color === players[userId].color;
+             
+             document.getElementById('modal-title').textContent = isWin ? "승리! 🎉" : "게임 종료";
+             document.getElementById('modal-content').textContent = `1등: ${COLOR_MAP[winner.color].label} (${winner.score}점)\n내 점수: ${myScore}점`;
+             document.getElementById('message-modal').classList.remove('hidden');
+        }
+
+        window.closeModal = () => document.getElementById('message-modal').classList.add('hidden');
+        
+        function resetUI() {
+            joinBtn.disabled = false;
+            joinBtn.textContent = "🔍 매칭 시작 (대기열 참가)";
+            joinBtn.classList.remove('hidden');
+            aiBtn.classList.add('hidden');
+        }
+    </script>
+</body>
+</html>
