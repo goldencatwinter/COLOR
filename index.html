@@ -142,15 +142,12 @@
             </div>
 
             <div class="flex-1 flex items-center justify-center min-h-[400px] mb-8">
-                <!-- Relative container for positioning modal inside -->
                 <div id="game-board" class="relative grid grid-cols-5 gap-px bg-gray-300 p-px w-full max-w-[600px] aspect-square border-2 border-gray-300 shadow-lg">
                     
-                    <!-- Waiting Screen -->
                     <div class="col-span-5 flex items-center justify-center h-full text-white text-xl font-bold tracking-widest uppercase bg-waiting-rainbow shadow-inner">
-                        Waiting for match<br><span class="text-xs opacity-70 mt-2 font-normal">Click anywhere to enable sound</span>
+                        Waiting for match
                     </div>
 
-                    <!-- Game Result Modal (Inside Board, Centered) -->
                     <div id="message-modal" class="hidden absolute inset-0 z-50 flex items-center justify-center backdrop-blur-[2px] bg-black/30">
                         <div class="modal-content bg-white/20 border border-white/40 p-6 w-[80%] max-w-sm text-center backdrop-blur-md shadow-[0_8px_32px_0_rgba(31,38,135,0.37)] rounded-xl">
                             <h3 id="modal-title" class="text-2xl font-black uppercase mb-3 tracking-tighter text-white drop-shadow-md">TITLE</h3>
@@ -362,7 +359,8 @@
 
         // --- Config ---
         const BOARD_SIZE = 5;
-        const TURN_DURATION_MS = 5000;
+        const TURN_DURATION_MS = 5000; // Regular turn
+        const FIRST_TURN_DURATION_MS = 10000; // First turn only
         const NETWORK_BUFFER_MS = 1000;
         const MAX_OVERWRITES = 1;
 
@@ -546,7 +544,8 @@
             }
 
             const initialBoard = Array(BOARD_SIZE).fill(0).map(() => Array(BOARD_SIZE).fill(''));
-            const deadLine = Date.now() + TURN_DURATION_MS + NETWORK_BUFFER_MS;
+            // Use FIRST_TURN_DURATION_MS for the first turn
+            const deadLine = Date.now() + FIRST_TURN_DURATION_MS + NETWORK_BUFFER_MS;
 
             await runTransaction(db, async (transaction) => {
                 transaction.set(newGameRef, {
@@ -573,7 +572,8 @@
                 'AI_Y': { nickname: "AI YELLOW", color: 'Y', isAI: true, score: 0, overwrites: 0, lastMove: null }, 
                 'AI_B': { nickname: "AI BLUE", color: 'B', isAI: true, score: 0, overwrites: 0, lastMove: null } 
             };
-            const deadLine = Date.now() + TURN_DURATION_MS + NETWORK_BUFFER_MS;
+            // Use FIRST_TURN_DURATION_MS for the first turn
+            const deadLine = Date.now() + FIRST_TURN_DURATION_MS + NETWORK_BUFFER_MS;
             await setDoc(newGameRef, {
                 status: 'playing', turn: 1, turnDeadline: deadLine,
                 board: JSON.stringify(initialBoard), players: playersData,
@@ -768,8 +768,8 @@
                 const diff = deadline - now;
                 const secondsLeft = Math.ceil(diff / 1000);
                 
-                // Fixed: clamp so it never shows > 5
-                const displaySeconds = Math.min(5, Math.max(0, secondsLeft - 1));
+                // Allow display to show up to the full duration (removed Math.min(5, ...))
+                const displaySeconds = Math.max(0, secondsLeft - 1);
                 
                 if (secondsLeft > 0) {
                     updateTimerDisplay(displaySeconds.toString());
