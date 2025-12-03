@@ -1,98 +1,235 @@
 <!DOCTYPE html>
-<html lang="ko">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>3인 오델로 : 매칭 & AI 시스템</title>
+    <title>COLOR - 3 Player Strategy</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
-        body { font-family: 'Inter', sans-serif; background-color: #f0f2f5; }
-        .cell { transition: all 0.2s; }
-        .cell:hover:not(.claimed) { transform: scale(1.05); cursor: pointer; }
-        .red { background-color: #ef4444; }
-        .yellow { background-color: #facc15; }
-        .blue { background-color: #3b82f6; }
-        .red-light { background-color: #fca5a5; }
-        .yellow-light { background-color: #fde68a; }
-        .blue-light { background-color: #93c5fd; }
-        .cell-player-color { aspect-ratio: 1/1; min-width: 40px; }
+        @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700;900&display=swap');
         
-        /* 대기열 리스트 애니메이션 */
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
-        .queue-item { animation: fadeIn 0.3s ease-out forwards; }
+        body { 
+            font-family: 'Montserrat', sans-serif; 
+            background-color: #f0f0f0; 
+            color: #1a1a1a;
+        }
+
+        /* --- Animations --- */
+        @keyframes rainbowCycle {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+
+        @keyframes subtle-shine {
+            0% { left: -100%; opacity: 0; }
+            50% { opacity: 0.6; }
+            100% { left: 100%; opacity: 0; }
+        }
+
+        @keyframes popIn {
+            0% { transform: scale(0.8); opacity: 0; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+
+        /* Success & Conflict Step: 1s Fill & Shine */
+        @keyframes shine-pulse {
+            0% { 
+                transform: scale(0.9); 
+                filter: brightness(1.5);
+                box-shadow: 0 0 0 0 rgba(255,255,255,0.7);
+            }
+            50% { 
+                transform: scale(1.05); 
+                filter: brightness(1.2);
+                box-shadow: 0 0 20px 5px rgba(255,255,255,0.5);
+            }
+            100% { 
+                transform: scale(1); 
+                filter: brightness(1);
+                box-shadow: 0 0 0 0 rgba(255,255,255,0);
+            }
+        }
+
+        /* Final Vanish for Conflict */
+        @keyframes vanish-anim {
+            0% { transform: scale(1); opacity: 1; }
+            100% { transform: scale(0.5); opacity: 0; }
+        }
+
+        /* Flip: 0.5s Rotate */
+        @keyframes flip-anim {
+            0% { transform: perspective(400px) rotateY(0); }
+            50% { transform: perspective(400px) rotateY(90deg); filter: brightness(2); }
+            100% { transform: perspective(400px) rotateY(0); }
+        }
+
+        .title-rainbow {
+            background: linear-gradient(to right, #ff0000, #ff8800, #ffff00, #008000, #0000ff, #4b0082, #ee82ee);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            background-size: 200% auto;
+            animation: rainbowCycle 10s linear infinite;
+        }
+
+        .bg-waiting-rainbow {
+            background: linear-gradient(45deg, 
+                #ff0000, #ffa500, #ffff00, #008000, #0000ff, #4b0082, #ee82ee, #ff0000
+            );
+            background-size: 400% 400%;
+            animation: rainbowCycle 20s ease infinite;
+        }
+
+        .bg-player-red { background-color: rgb(255, 0, 0); }
+        .bg-player-yellow { background-color: rgb(255, 255, 0); }
+        .bg-player-blue { background-color: rgb(0, 0, 255); }
+
+        .text-player-red { color: rgb(255, 0, 0); }
+        .text-player-yellow { color: rgb(210, 180, 0); } 
+        .text-player-blue { color: rgb(0, 0, 255); }
+
+        .breaker-shine {
+            position: relative;
+            overflow: hidden;
+        }
+        .breaker-shine::after {
+            content: '';
+            position: absolute;
+            top: 0; left: -100%; width: 50%; height: 100%;
+            background: linear-gradient(to right, transparent, rgba(255,255,255,0.9), transparent);
+            transform: skewX(-25deg);
+            animation: subtle-shine 0.6s ease-out forwards;
+            pointer-events: none;
+        }
+
+        .cell { transition: transform 0.1s ease-in-out; }
+        .cell:hover:not(.occupied-immutable) { filter: brightness(0.9); cursor: pointer; }
+        
+        @keyframes slideIn { from { opacity: 0; transform: translateX(-10px); } to { opacity: 1; transform: translateX(0); } }
+        .queue-item { animation: slideIn 0.3s ease-out forwards; }
+
+        .modal-content { animation: popIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
+
+        ::-webkit-scrollbar { width: 4px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #d4d4d4; }
     </style>
 </head>
-<body class="flex flex-col items-center justify-center min-h-screen p-4 text-gray-800">
+<body class="flex flex-col items-center justify-center min-h-screen p-2 md:p-8" onclick="SoundManager.init()">
 
-    <div id="game-container" class="w-full max-w-5xl bg-white shadow-xl rounded-2xl p-6 md:p-8 flex flex-col md:flex-row gap-8">
+    <div id="game-container" class="w-full max-w-7xl bg-white shadow-2xl flex flex-col lg:flex-row min-h-[700px] border border-gray-300">
         
-        <div class="flex-1 flex flex-col">
-            <h1 class="text-3xl font-extrabold text-center text-gray-900 mb-2">3인 오델로 (5x5)</h1>
-            <p class="text-center text-gray-500 text-sm mb-6">색을 많이 차지하여 승리하세요!</p>
+        <div class="flex-1 flex flex-col p-6 md:p-10 relative">
             
-            <div class="flex justify-between items-center bg-gray-100 rounded-xl p-4 mb-6 shadow-inner">
+            <div class="mb-8 flex justify-between items-end">
+                <h1 class="text-6xl md:text-7xl font-black tracking-tighter title-rainbow">COLOR</h1>
+                <div class="text-right hidden md:block">
+                    <p class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">TIMER</p>
+                    <p class="text-5xl font-mono font-bold leading-none" id="timer-display">--</p>
+                </div>
+            </div>
+
+            <div class="flex md:hidden justify-between items-end border-b-2 border-black pb-4 mb-6">
                 <div>
-                    <p class="text-xs text-gray-500">나의 상태</p>
-                    <p class="font-bold text-lg text-blue-600" id="my-status">대기 중</p>
+                    <p class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">STATUS</p>
+                    <p class="text-lg font-bold uppercase tracking-tight" id="my-status-mobile">IDLE</p>
                 </div>
                 <div class="text-right">
-                    <p class="text-xs text-gray-500">남은 시간</p>
-                    <p class="font-mono font-bold text-2xl text-red-500" id="timer-display">--</p>
+                    <p class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">TIMER</p>
+                    <p class="text-4xl font-mono font-bold leading-none" id="timer-display-mobile">--</p>
                 </div>
             </div>
 
-            <div class="flex justify-center mb-6">
-                <div id="game-board" class="grid grid-cols-5 gap-1.5 bg-gray-300 p-3 rounded-xl shadow-lg w-full max-w-[400px]">
-                    <div class="col-span-5 text-center text-gray-500 py-10">매칭을 시작해주세요.</div>
+            <div class="flex-1 flex items-center justify-center min-h-[400px] mb-8">
+                <!-- Relative container for positioning modal inside -->
+                <div id="game-board" class="relative grid grid-cols-5 gap-px bg-gray-300 p-px w-full max-w-[600px] aspect-square border-2 border-gray-300 shadow-lg">
+                    
+                    <!-- Waiting Screen -->
+                    <div class="col-span-5 flex items-center justify-center h-full text-white text-xl font-bold tracking-widest uppercase bg-waiting-rainbow shadow-inner">
+                        Waiting for match<br><span class="text-xs opacity-70 mt-2 font-normal">Click anywhere to enable sound</span>
+                    </div>
+
+                    <!-- Game Result Modal (Inside Board, Centered) -->
+                    <div id="message-modal" class="hidden absolute inset-0 z-50 flex items-center justify-center backdrop-blur-[2px] bg-black/30">
+                        <div class="modal-content bg-white/20 border border-white/40 p-6 w-[80%] max-w-sm text-center backdrop-blur-md shadow-[0_8px_32px_0_rgba(31,38,135,0.37)] rounded-xl">
+                            <h3 id="modal-title" class="text-2xl font-black uppercase mb-3 tracking-tighter text-white drop-shadow-md">TITLE</h3>
+                            <p id="modal-content" class="text-white mb-6 font-bold whitespace-pre-line leading-relaxed text-sm drop-shadow-sm">Content</p>
+                            <button onclick="location.reload()" class="w-full bg-white/20 hover:bg-white/40 text-white border border-white/50 font-black py-3 text-xs tracking-[0.2em] uppercase transition-all hover:scale-105 rounded-lg shadow-lg">
+                                RETURN TO LOBBY
+                            </button>
+                        </div>
+                    </div>
+
                 </div>
             </div>
 
-            <div class="mt-auto space-y-3">
-                <button id="join-queue-btn" 
-                        class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-4 rounded-xl shadow-lg transition transform hover:-translate-y-1 disabled:opacity-50 disabled:translate-y-0">
-                    🔍 매칭 시작 (대기열 참가)
-                </button>
-                <button id="force-ai-btn" 
-                        class="w-full bg-white border-2 border-gray-300 hover:bg-gray-50 text-gray-700 font-bold py-3 rounded-xl transition hidden">
-                    🤖 기다리기 힘들어요 (AI와 바로 시작)
-                </button>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mt-auto items-center">
+                <div id="breaker-status" class="hidden flex flex-col justify-center h-full p-4 bg-gray-100 border border-gray-200">
+                    <p class="text-xs font-bold text-gray-500 uppercase tracking-widest mb-1">BREAKERS (OVERWRITE)</p>
+                    <div class="flex items-center gap-2">
+                        <span id="breaker-count" class="text-3xl font-black text-black">1</span>
+                        <span class="text-sm font-bold text-gray-400">/ 1 LEFT</span>
+                    </div>
+                    <p class="text-[10px] text-gray-400 mt-1">Click opponent's cell to overwrite.</p>
+                </div>
+
+                <div class="flex flex-col gap-3 col-span-1 md:col-span-2 lg:col-span-1 w-full">
+                    <div id="nickname-section" class="w-full">
+                        <input type="text" id="nickname-input" placeholder="ENTER NICKNAME" maxlength="10" 
+                               class="w-full bg-gray-100 border-2 border-gray-200 p-4 font-bold text-center uppercase tracking-widest focus:outline-none focus:border-black transition-colors mb-3">
+                        <button id="join-queue-btn" disabled
+                                class="w-full bg-black text-white hover:bg-gray-800 font-bold py-4 text-sm tracking-widest uppercase transition-colors disabled:opacity-30 disabled:cursor-not-allowed">
+                            Find Match
+                        </button>
+                    </div>
+
+                    <div id="game-buttons" class="hidden flex flex-col gap-2 w-full">
+                        <button id="force-ai-btn" 
+                                class="w-full bg-white text-black border-2 border-black hover:bg-black hover:text-white font-bold py-3 text-xs tracking-widest uppercase transition-colors hidden">
+                            Solo with AI
+                        </button>
+                        <button id="start-2p-ai-btn"
+                                class="w-full bg-gray-900 text-yellow-400 border-2 border-gray-900 hover:bg-gray-800 font-bold py-3 text-xs tracking-widest uppercase transition-colors hidden shadow-lg">
+                            Start with AI (2P + 1 AI)
+                        </button>
+                    </div>
+                </div>
             </div>
         </div>
 
-        <div class="w-full md:w-80 flex flex-col gap-6 border-l border-gray-200 md:pl-8">
-            
-            <div class="bg-gray-50 p-4 rounded-xl border border-gray-100">
-                <p class="text-xs text-gray-400 font-bold uppercase mb-1">My Profile</p>
-                <p class="text-sm text-gray-600 break-all">ID: <span id="my-user-id" class="font-mono">Connecting...</span></p>
-                <p class="text-sm font-bold mt-1">Color: <span id="my-color-display" class="text-gray-400">지정 안됨</span></p>
+        <div class="w-full lg:w-96 bg-gray-50 border-t lg:border-t-0 lg:border-l border-gray-200 p-8 flex flex-col gap-8">
+            <div>
+                <p class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2">PROFILE</p>
+                <div class="bg-white border border-gray-200 p-6 shadow-sm">
+                    <div id="profile-hidden" class="text-center py-4">
+                        <p class="text-xs text-gray-400">ENTER NICKNAME TO PLAY</p>
+                    </div>
+                    <div id="profile-visible" class="hidden">
+                        <p class="text-xs text-gray-500 mb-1">PLAYER</p>
+                        <p class="font-black text-2xl uppercase mb-4 truncate" id="my-nickname-display">-</p>
+                        <p class="text-xs text-gray-500 mb-1">TEAM COLOR</p>
+                        <p class="font-bold text-xl uppercase" id="my-color-display">SPECTATOR</p>
+                    </div>
+                </div>
             </div>
 
-            <div class="flex-1 bg-blue-50 p-4 rounded-xl border border-blue-100 flex flex-col h-64 md:h-auto overflow-hidden">
-                <div class="flex justify-between items-center mb-3">
-                    <h3 class="font-bold text-blue-800">🏃 대기열 현황</h3>
-                    <span id="queue-count" class="bg-blue-200 text-blue-800 text-xs px-2 py-1 rounded-full font-bold">0명</span>
+            <div class="flex-1 min-h-[200px] flex flex-col">
+                <div class="flex justify-between items-center mb-4 border-b border-gray-200 pb-2">
+                    <p class="text-[10px] font-bold text-gray-400 uppercase tracking-widest">QUEUE</p>
+                    <span id="queue-count" class="text-xs font-bold bg-black text-white px-2 py-0.5">0</span>
                 </div>
-                <div id="queue-list" class="flex-1 overflow-y-auto space-y-2 pr-1 custom-scrollbar">
-                    <p class="text-gray-400 text-sm text-center py-4">대기 중인 플레이어가 없습니다.</p>
+                <div id="queue-list" class="flex-1 overflow-y-auto space-y-2 pr-2">
+                    <p class="text-gray-300 text-xs text-center py-8 uppercase tracking-widest">No players waiting</p>
                 </div>
-                <p class="text-xs text-blue-400 text-center mt-2">3명이 모이면 자동 시작!</p>
             </div>
 
-            <div class="bg-gray-50 p-4 rounded-xl border border-gray-100">
-                <h3 class="font-bold text-gray-700 mb-2">🏆 점수판</h3>
-                <ul id="score-list" class="space-y-2 text-sm">
-                    <li class="text-gray-400">게임 시작 전</li>
+            <div>
+                <p class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2">SCORES</p>
+                <ul id="score-list" class="space-y-2">
+                    <li class="text-gray-300 text-xs uppercase tracking-widest py-2">Game not started</li>
                 </ul>
             </div>
-        </div>
-    </div>
-
-    <div id="message-modal" class="hidden fixed inset-0 bg-black/50 flex items-center justify-center z-50 backdrop-blur-sm">
-        <div class="bg-white p-6 rounded-2xl shadow-2xl text-center max-w-sm w-full mx-4 transform transition-all scale-100">
-            <h3 id="modal-title" class="text-xl font-bold mb-2 text-gray-900">알림</h3>
-            <p id="modal-content" class="text-gray-600 mb-6"></p>
-            <button onclick="closeModal()" class="w-full bg-gray-900 text-white font-bold py-3 rounded-xl hover:bg-gray-800">확인</button>
         </div>
     </div>
 
@@ -104,17 +241,139 @@
             query, where, getDocs, runTransaction, serverTimestamp, orderBy, limit 
         } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-        // --- 설정 ---
-        const BOARD_SIZE = 5;
-        const COLORS = ['R', 'Y', 'B']; 
-        const COLOR_MAP = {
-            'R': { code: 'red', light: 'red-light', label: '빨강' },
-            'Y': { code: 'yellow', light: 'yellow-light', label: '노랑' },
-            'B': { code: 'blue', light: 'blue-light', label: '파랑' },
+        // --- Sound Manager (Web Audio API) ---
+        window.SoundManager = {
+            ctx: null,
+            init: function() {
+                if (this.ctx) return;
+                const AudioContext = window.AudioContext || window.webkitAudioContext;
+                this.ctx = new AudioContext();
+                this.playAmbient();
+            },
+            playAmbient: function() {
+                const t = this.ctx.currentTime;
+                const gain = this.ctx.createGain();
+                gain.connect(this.ctx.destination);
+                
+                // Brighter Major 7 Ambient (C4, E4, G4, B4)
+                const freqs = [261.63, 329.63, 392.00, 493.88]; 
+                
+                freqs.forEach((f, i) => {
+                    const osc = this.ctx.createOscillator();
+                    osc.type = i % 2 === 0 ? 'sine' : 'triangle';
+                    osc.frequency.value = f;
+                    
+                    const oscGain = this.ctx.createGain();
+                    oscGain.gain.value = 0.03; // Low volume for background
+                    
+                    // Simple LFO for movement
+                    const lfo = this.ctx.createOscillator();
+                    lfo.frequency.value = 0.1 + (i * 0.05);
+                    const lfoGain = this.ctx.createGain();
+                    lfoGain.gain.value = 0.01;
+                    lfo.connect(lfoGain);
+                    lfoGain.connect(oscGain.gain);
+                    lfo.start();
+
+                    osc.connect(oscGain);
+                    oscGain.connect(gain);
+                    osc.start();
+                });
+
+                gain.gain.setValueAtTime(0, t);
+                gain.gain.linearRampToValueAtTime(0.5, t + 5); 
+            },
+            playGlass: function() { // New Glass Ting Sound
+                if (!this.ctx) return;
+                const t = this.ctx.currentTime;
+                
+                // Primary Tone
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(1500, t); 
+                osc.frequency.exponentialRampToValueAtTime(1500, t + 1); 
+                
+                gain.gain.setValueAtTime(0, t);
+                gain.gain.linearRampToValueAtTime(0.4, t + 0.01); 
+                gain.gain.exponentialRampToValueAtTime(0.001, t + 1.5); 
+
+                osc.connect(gain);
+                gain.connect(this.ctx.destination);
+                osc.start(t);
+                osc.stop(t + 1.5);
+                
+                // High harmonic ring
+                const osc2 = this.ctx.createOscillator();
+                const gain2 = this.ctx.createGain();
+                osc2.type = 'triangle';
+                osc2.frequency.setValueAtTime(3000, t);
+                
+                gain2.gain.setValueAtTime(0, t);
+                gain2.gain.linearRampToValueAtTime(0.05, t + 0.01);
+                gain2.gain.exponentialRampToValueAtTime(0.001, t + 1.0);
+                
+                osc2.connect(gain2);
+                gain2.connect(this.ctx.destination);
+                osc2.start(t);
+                osc2.stop(t + 1.0);
+            },
+            playConflict: function() { // Conflict Buzz
+                if (!this.ctx) return;
+                const t = this.ctx.currentTime;
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                
+                osc.type = 'sawtooth';
+                osc.frequency.setValueAtTime(100, t);
+                osc.frequency.linearRampToValueAtTime(50, t + 0.5);
+                
+                gain.gain.setValueAtTime(0.1, t);
+                gain.gain.exponentialRampToValueAtTime(0.001, t + 0.5);
+                
+                osc.connect(gain);
+                gain.connect(this.ctx.destination);
+                osc.start(t);
+                osc.stop(t + 0.5);
+            },
+            playTick: function() {
+                if (!this.ctx) return;
+                const t = this.ctx.currentTime;
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                const filter = this.ctx.createBiquadFilter();
+
+                osc.type = 'square';
+                filter.type = 'highpass';
+                filter.frequency.value = 2000;
+
+                osc.connect(filter);
+                filter.connect(gain);
+                gain.connect(this.ctx.destination);
+
+                osc.frequency.setValueAtTime(800, t);
+                gain.gain.setValueAtTime(0.15, t);
+                gain.gain.exponentialRampToValueAtTime(0.001, t + 0.05);
+
+                osc.start();
+                osc.stop(t + 0.05);
+            }
         };
-        const MAX_PLAYERS = 3;
+
+        // --- Config ---
+        const BOARD_SIZE = 5;
+        const TURN_DURATION_MS = 5000;
+        const NETWORK_BUFFER_MS = 1000;
+        const MAX_OVERWRITES = 1;
+
+        const COLORS = ['R', 'Y', 'B']; 
         
-        // Firebase Config
+        const COLOR_MAP = {
+            'R': { code: 'bg-player-red', text: 'text-player-red', label: 'RED' },
+            'Y': { code: 'bg-player-yellow', text: 'text-player-yellow', label: 'YELLOW' },
+            'B': { code: 'bg-player-blue', text: 'text-player-blue', label: 'BLUE' },
+        };
+        
         const firebaseConfig = {
             apiKey: "AIzaSyA1DEzZvw6_63cLUk_YeWYRInZ0drIzd5Q",
             authDomain: "color-a6d38.firebaseapp.com",
@@ -123,34 +382,51 @@
             messagingSenderId: "761735384766",
             appId: "1:761735384766:web:cc52566ccafac650a558ef"
         };
-        const appId = 'Color-Game-V2'; // V2 Namespace for queue system
+        
+        const appId = 'Color-Game-V7-Conflict';
 
-        // Globals
         let app, db, auth, userId;
-        let queueDocId = null; // My queue ticket ID
+        let myNickname = "";
+        let queueDocId = null;
         let gameId = null;
         let myColor = null;
+        let myOverwritesLeft = MAX_OVERWRITES;
+        let currentQueueDocs = []; 
+        let lastProcessedTurn = 0; // Track animations
+        let isAnimating = false; // Flag to block renders during anim
+        let pendingBoardState = null; // Buffer new board during anim
+        
         let unsubscribeQueue = null;
         let unsubscribeGame = null;
-        let unsubscribeMyTicket = null; // Listen to my own queue ticket for match info
+        let unsubscribeMyTicket = null;
 
-        // UI Elements
+        const nicknameInput = document.getElementById('nickname-input');
+        const nicknameSection = document.getElementById('nickname-section');
         const joinBtn = document.getElementById('join-queue-btn');
+        const gameButtonsDiv = document.getElementById('game-buttons');
         const aiBtn = document.getElementById('force-ai-btn');
+        const start2pBtn = document.getElementById('start-2p-ai-btn');
+        
         const queueListEl = document.getElementById('queue-list');
         const queueCountEl = document.getElementById('queue-count');
         const boardElement = document.getElementById('game-board');
-        const myStatusEl = document.getElementById('my-status');
         const timerDisplay = document.getElementById('timer-display');
+        const timerDisplayMobile = document.getElementById('timer-display-mobile');
         const scoreList = document.getElementById('score-list');
+        
+        const profileHidden = document.getElementById('profile-hidden');
+        const profileVisible = document.getElementById('profile-visible');
+        const myNicknameDisplay = document.getElementById('my-nickname-display');
+        const myColorDisplay = document.getElementById('my-color-display');
+        const breakerStatusDiv = document.getElementById('breaker-status');
+        const breakerCountEl = document.getElementById('breaker-count');
 
-        // Game State
         let currentBoardState = [];
-        let selectedCell = null;
+        let selectedCell = null; 
         let isResolving = false;
-        let timerInterval = null;
+        let localTimerInterval = null;
+        let lastTimerValue = ""; 
 
-        // --- 초기화 ---
         async function init() {
             app = initializeApp(firebaseConfig);
             db = getFirestore(app);
@@ -158,457 +434,583 @@
             await signInAnonymously(auth);
             
             onAuthStateChanged(auth, (user) => {
-                if (user) {
-                    userId = user.uid;
-                    document.getElementById('my-user-id').textContent = userId.substring(0, 8) + '...';
-                    joinBtn.disabled = false;
-                    
-                    // 대기열 전체 현황은 항상 보여줌 (참가 안했어도)
-                    watchQueueList(); 
-                }
+                if (user) userId = user.uid;
             });
         }
         window.onload = init;
 
-        // --- 대기열(Queue) 로직 ---
+        nicknameInput.addEventListener('input', (e) => {
+            joinBtn.disabled = e.target.value.trim().length === 0;
+        });
 
-        // 1. 대기열 참가
         joinBtn.addEventListener('click', async () => {
             if (!userId) return;
+            const val = nicknameInput.value.trim();
+            if(!val) return;
+            myNickname = val;
+            
+            if(window.SoundManager) window.SoundManager.init();
+
+            joinBtn.textContent = "SEARCHING...";
             joinBtn.disabled = true;
-            joinBtn.textContent = "매칭 중...";
-            aiBtn.classList.remove('hidden'); // AI 버튼 보이기
-            myStatusEl.textContent = "대기열 진입";
+            nicknameInput.disabled = true;
+            nicknameSection.classList.add('hidden'); 
+            gameButtonsDiv.classList.remove('hidden'); 
+            aiBtn.classList.remove('hidden');
+
+            profileHidden.classList.add('hidden');
+            profileVisible.classList.remove('hidden');
+            myNicknameDisplay.textContent = myNickname;
 
             try {
-                // Queue 컬렉션에 내 티켓 생성
                 const queueRef = collection(db, 'artifacts', appId, 'public', 'data', 'queue');
-                const ticketRef = doc(queueRef, userId); // Use userId as doc ID for simplicity
-                
-                await setDoc(ticketRef, {
-                    userId: userId,
-                    joinedAt: serverTimestamp(),
-                    matchId: null // 매칭되면 게임 ID가 여기 적힘
+                const ticketRef = doc(queueRef, userId);
+                await setDoc(ticketRef, { 
+                    userId: userId, 
+                    nickname: myNickname,
+                    joinedAt: serverTimestamp(), 
+                    matchId: null 
                 });
-                
                 queueDocId = userId;
-                
-                // 내 티켓 감시 (매칭 성공 여부 확인)
                 watchMyTicket(ticketRef);
-
+                watchQueueList(); 
             } catch (e) {
                 console.error(e);
-                alert("대기열 참가 실패");
+                alert("Connection Error");
                 resetUI();
             }
         });
 
-        // 2. 내 티켓 감시 및 매칭 확인
         function watchMyTicket(docRef) {
             unsubscribeMyTicket = onSnapshot(docRef, (docSnap) => {
-                if (!docSnap.exists()) {
-                    // 누군가(혹은 나)에 의해 큐에서 제거됨 -> 게임 시작 혹은 취소
-                    // (여기서는 matchId가 업데이트되는 방식을 사용하므로 삭제는 게임 참가 후 처리)
-                    return;
-                }
+                if (!docSnap.exists()) return;
                 const data = docSnap.data();
-                if (data.matchId) {
-                    // 매칭 성공!
-                    console.log("매칭 성공! 게임 ID:", data.matchId);
-                    enterGame(data.matchId);
-                }
+                if (data.matchId) enterGame(data.matchId);
             });
         }
 
-        // 3. 전체 대기열 감시 & 자동 매칭 트리거 (핵심 로직)
         function watchQueueList() {
             const queueRef = collection(db, 'artifacts', appId, 'public', 'data', 'queue');
             const q = query(queueRef, orderBy('joinedAt', 'asc'));
-
             unsubscribeQueue = onSnapshot(q, (snapshot) => {
                 const docs = snapshot.docs;
+                currentQueueDocs = docs;
                 renderQueueList(docs);
-
-                // *** 매칭 로직 (클라이언트 사이드) ***
-                // 내가 대기열에 있고, 대기열 인원이 3명 이상일 때
-                // "동시성 제어"를 위해, 정렬된 목록의 **3번째 사람**이 총대를 메고 게임을 생성함.
                 if (queueDocId && docs.length >= 3) {
                     const top3 = docs.slice(0, 3);
-                    const myIndex = top3.findIndex(d => d.id === userId);
-                    
-                    // 내가 3명 중 3번째 사람(인덱스 2)이라면 게임 생성 트리거
-                    if (myIndex === 2) {
-                        createMatchedGame(top3);
-                    }
+                    if (top3[2].id === userId) createMatchedGame(top3);
+                }
+                if (queueDocId && docs.length === 2) {
+                    start2pBtn.classList.remove('hidden');
+                } else {
+                    start2pBtn.classList.add('hidden');
                 }
             });
         }
 
-        // 4. 매칭된 게임 생성 (3번째 사람이 실행)
-        async function createMatchedGame(usersDocs) {
-            console.log("3명이 모여 매칭을 시작합니다. 호스트:", userId);
-            
-            // 새 게임 ID 생성
+        async function createMatchedGame(usersDocs) { await initGameWithPlayers(usersDocs); }
+
+        start2pBtn.addEventListener('click', async () => {
+            if(window.SoundManager) window.SoundManager.init();
+            if (!queueDocId || currentQueueDocs.length !== 2) return;
+            const top2 = currentQueueDocs.slice(0, 2);
+            await initGameWithPlayers(top2, true); 
+        });
+
+        async function initGameWithPlayers(usersDocs, fillAI = false) {
             const gamesRef = collection(db, 'artifacts', appId, 'public', 'data', 'games');
             const newGameRef = doc(gamesRef);
             const newGameId = newGameRef.id;
-
             const playersData = {};
             const playerOrder = [];
             
             usersDocs.forEach((d, idx) => {
                 const uid = d.data().userId;
-                playersData[uid] = {
-                    color: COLORS[idx], // 순서대로 색깔 배정
-                    isAI: false,
-                    score: 0,
-                    lastMove: null
+                const nick = d.data().nickname || "Unknown";
+                playersData[uid] = { 
+                    nickname: nick, color: COLORS[idx], isAI: false, score: 0, overwrites: MAX_OVERWRITES, lastMove: null 
                 };
                 playerOrder.push(uid);
             });
 
-            // 초기 보드
-            const initialBoard = Array(BOARD_SIZE).fill(0).map(() => Array(BOARD_SIZE).fill(''));
-
-            // Transaction: 게임 생성 + 큐의 유저들에게 matchId 부여
-            try {
-                await runTransaction(db, async (transaction) => {
-                    // 1. 게임 문서 생성
-                    transaction.set(newGameRef, {
-                        status: 'playing', // 바로 시작
-                        turn: 1,
-                        timer: 5,
-                        board: JSON.stringify(initialBoard),
-                        players: playersData,
-                        playerOrder: playerOrder,
-                        hostId: userId, // 3번째 사람이 임시 호스트
-                        createdAt: serverTimestamp()
-                    });
-
-                    // 2. 대기열 유저들에게 신호 보내기 (matchId 업데이트)
-                    for (const d of usersDocs) {
-                        const qRef = doc(db, 'artifacts', appId, 'public', 'data', 'queue', d.id);
-                        transaction.update(qRef, { matchId: newGameId });
-                    }
-                });
-            } catch (e) {
-                console.error("매칭 생성 트랜잭션 실패:", e);
+            if (fillAI && usersDocs.length < 3) {
+                const aiCount = 3 - usersDocs.length;
+                for(let i=0; i<aiCount; i++) {
+                    const colorIndex = usersDocs.length + i;
+                    const aiId = `AI_CPU_${i+1}`;
+                    playersData[aiId] = { 
+                        nickname: "AI BOT", color: COLORS[colorIndex], isAI: true, score: 0, overwrites: 0, lastMove: null 
+                    };
+                    playerOrder.push(aiId);
+                }
             }
+
+            const initialBoard = Array(BOARD_SIZE).fill(0).map(() => Array(BOARD_SIZE).fill(''));
+            const deadLine = Date.now() + TURN_DURATION_MS + NETWORK_BUFFER_MS;
+
+            await runTransaction(db, async (transaction) => {
+                transaction.set(newGameRef, {
+                    status: 'playing', turn: 1, turnDeadline: deadLine,
+                    board: JSON.stringify(initialBoard), players: playersData,
+                    playerOrder: playerOrder, hostId: userId, createdAt: serverTimestamp(),
+                    lastRoundEvents: "[]" // Init events
+                });
+                for (const d of usersDocs) {
+                    const qRef = doc(db, 'artifacts', appId, 'public', 'data', 'queue', d.id);
+                    transaction.update(qRef, { matchId: newGameId });
+                }
+            });
         }
 
-        // 5. AI와 바로 시작 (강제 시작)
         aiBtn.addEventListener('click', async () => {
+            if(window.SoundManager) window.SoundManager.init();
             if (!queueDocId) return;
-            
-            if(!confirm("현재 대기열에서 나가고 AI와 게임을 시작하시겠습니까?")) return;
-
-            // 큐에서 나감
             await leaveQueue();
-            
-            // 솔로 게임 생성
-            await createSoloGame();
+            const newGameRef = doc(collection(db, 'artifacts', appId, 'public', 'data', 'games'));
+            const initialBoard = Array(BOARD_SIZE).fill(0).map(() => Array(BOARD_SIZE).fill(''));
+            const playersData = {
+                [userId]: { nickname: myNickname, color: 'R', isAI: false, score: 0, overwrites: MAX_OVERWRITES, lastMove: null },
+                'AI_Y': { nickname: "AI YELLOW", color: 'Y', isAI: true, score: 0, overwrites: 0, lastMove: null }, 
+                'AI_B': { nickname: "AI BLUE", color: 'B', isAI: true, score: 0, overwrites: 0, lastMove: null } 
+            };
+            const deadLine = Date.now() + TURN_DURATION_MS + NETWORK_BUFFER_MS;
+            await setDoc(newGameRef, {
+                status: 'playing', turn: 1, turnDeadline: deadLine,
+                board: JSON.stringify(initialBoard), players: playersData,
+                playerOrder: [userId, 'AI_Y', 'AI_B'], hostId: userId, createdAt: serverTimestamp(),
+                lastRoundEvents: "[]"
+            });
+            enterGame(newGameRef.id);
         });
 
         async function leaveQueue() {
-             if (queueDocId) {
+            if (queueDocId) {
                 await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'queue', queueDocId));
-                if(unsubscribeMyTicket) unsubscribeMyTicket();
                 queueDocId = null;
             }
         }
 
-        async function createSoloGame() {
-            const gamesRef = collection(db, 'artifacts', appId, 'public', 'data', 'games');
-            const newGameRef = doc(gamesRef);
-            const initialBoard = Array(BOARD_SIZE).fill(0).map(() => Array(BOARD_SIZE).fill(''));
-            
-            // 나 + AI 2명
-            const playersData = {
-                [userId]: { color: 'R', isAI: false, score: 0, lastMove: null },
-                'AI_Y': { color: 'Y', isAI: true, score: 0, lastMove: null },
-                'AI_B': { color: 'B', isAI: true, score: 0, lastMove: null }
-            };
-
-            await setDoc(newGameRef, {
-                status: 'playing',
-                turn: 1,
-                timer: 5,
-                board: JSON.stringify(initialBoard),
-                players: playersData,
-                playerOrder: [userId, 'AI_Y', 'AI_B'],
-                hostId: userId,
-                createdAt: serverTimestamp()
-            });
-
-            enterGame(newGameRef.id);
-        }
-
-        // --- 게임 진입 및 로직 ---
-
         async function enterGame(id) {
             gameId = id;
-            
-            // 큐 정리 (매칭되어서 들어가는 경우, 내 티켓 삭제)
-            // 주의: 다른 사람 티켓은 건드리지 않음 (각자가 자기꺼 삭제하거나 나중에 정리)
-            // 여기서는 깔끔하게 내것만 지우고 진입
             await leaveQueue();
-
-            // UI 전환
-            joinBtn.classList.add('hidden');
-            aiBtn.classList.add('hidden');
-            queueListEl.parentElement.classList.add('hidden'); // 대기열 숨김 (선택사항)
-            document.getElementById('game-container').classList.remove('max-w-5xl');
-            document.getElementById('game-container').classList.add('max-w-4xl'); // 사이즈 조정
-
-            myStatusEl.textContent = "게임 접속 중...";
-
-            // 게임 리스너
+            nicknameSection.classList.add('hidden');
+            gameButtonsDiv.classList.add('hidden');
+            
             unsubscribeGame = onSnapshot(doc(db, 'artifacts', appId, 'public', 'data', 'games', gameId), (docSnap) => {
                 if(!docSnap.exists()) {
-                    alert("게임이 종료되었습니다.");
-                    location.reload();
+                    if(localTimerInterval) clearInterval(localTimerInterval);
                     return;
                 }
                 handleGameUpdate(docSnap.data());
             });
         }
 
-        // --- 기존 게임 로직 (보드 처리, 타이머, AI 등) ---
-        // (이전 코드의 핵심 로직을 그대로 가져오되 UI 연결 부분 최적화)
-
         function handleGameUpdate(gameData) {
-            // 1. 내 정보 확인
             const myData = gameData.players[userId];
             if (myData) {
                 myColor = myData.color;
+                myOverwritesLeft = myData.overwrites;
                 const cInfo = COLOR_MAP[myColor];
-                myStatusEl.innerHTML = `<span class="text-${cInfo.code}-600 font-bold">${cInfo.label}</span> 플레이어`;
-                document.getElementById('my-color-display').textContent = cInfo.label;
-                document.getElementById('my-color-display').className = `font-bold text-${cInfo.code}-600`;
-            } else {
-                myStatusEl.textContent = "관전 중";
+                myColorDisplay.textContent = cInfo.label;
+                myColorDisplay.className = `font-bold text-xl uppercase ${cInfo.text}`;
+                breakerStatusDiv.classList.remove('hidden');
+                breakerCountEl.textContent = myOverwritesLeft;
+                if(myOverwritesLeft === 0) breakerCountEl.classList.add('text-gray-300');
             }
 
-            // 2. 보드 렌더링
-            currentBoardState = JSON.parse(gameData.board);
-            renderBoard(currentBoardState, gameData);
+            // Animation Processing Logic
+            if (gameData.turn > lastProcessedTurn) {
+                if (gameData.lastRoundEvents) {
+                    const events = JSON.parse(gameData.lastRoundEvents);
+                    // Store new board but don't render it yet
+                    pendingBoardState = JSON.parse(gameData.board);
+                    isAnimating = true;
+                    triggerSequentialAnimations(events, gameData);
+                } else {
+                    // No events, just update
+                    currentBoardState = JSON.parse(gameData.board);
+                    renderBoard(currentBoardState, gameData);
+                }
+                lastProcessedTurn = gameData.turn;
+            } else if (!isAnimating) {
+                // Regular update if not animating
+                currentBoardState = JSON.parse(gameData.board);
+                renderBoard(currentBoardState, gameData);
+            }
 
-            // 3. 점수판
             renderScoreboard(gameData.players);
 
-            // 4. 상태 처리
             if (gameData.status === 'playing') {
-                timerDisplay.textContent = gameData.timer;
-                
-                // 호스트(방장)가 타이머 및 턴 처리 담당
-                if (userId === gameData.hostId) {
-                    manageHostLogic(gameData);
-                }
+                runClientTimer(gameData.turnDeadline, gameData);
             } else if (gameData.status === 'finished') {
-                timerDisplay.textContent = "END";
+                if (localTimerInterval) clearInterval(localTimerInterval);
+                updateTimerDisplay("0");
                 showWinner(gameData.players);
             }
         }
 
-        // 호스트 로직 (타이머 + 턴 종료 + AI)
-        function manageHostLogic(gameData) {
-            // 타이머 작동 (로컬에서 인터벌 돌리며 DB 업데이트)
-            // *최적화: 매초 DB 쓰기는 비용이 큼. 실제 서비스에선 TimeStamp 비교 방식 사용 권장.
-            // 여기선 기존 로직 유지하되 중복 실행 방지
+        function triggerSequentialAnimations(events, gameData) {
+            if (!events || events.length === 0) {
+                isAnimating = false;
+                currentBoardState = pendingBoardState;
+                renderBoard(currentBoardState, gameData);
+                return;
+            }
             
-            if (!timerInterval && gameData.timer > 0) {
-                let timeLeft = gameData.timer;
-                timerInterval = setInterval(async () => {
-                    timeLeft--;
-                    // UI 즉시 업데이트 (호스트만)
-                    // timerDisplay.textContent = timeLeft; 
-                    
-                    if (timeLeft >= 0) {
-                         // DB 업데이트 (다른 사람들에게 시간 전파)
-                         await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'games', gameId), { timer: timeLeft });
-                    }
+            // Queue animation steps
+            let accumulatedDelay = 0;
 
-                    if (timeLeft <= 0) {
-                        clearInterval(timerInterval);
-                        timerInterval = null;
-                        if (!isResolving) resolveTurn(gameData);
+            events.forEach((ev, index) => {
+                const cellIdx = (ev.r * BOARD_SIZE) + ev.c;
+                
+                // Determine step duration based on event type
+                // Success: 1s, Flip: 0.5s, Conflict: Total 2s (dynamic per color)
+                let duration = 1000;
+                if(ev.type === 'flip') duration = 500;
+                else if (ev.type === 'conflict') {
+                    // Calculate dynamic duration based on conflicting colors (e.g., 2 colors = 2s paint + 1s vanish? No, user said 1s paint each)
+                    // Wait, user said "each color painted 1s, then vanish". 
+                    // Let's implement that logic inside the callback.
+                    duration = (ev.colors.length * 1000) + 1000; // Paint time + 1s vanish
+                }
+
+                setTimeout(() => {
+                    const cells = boardElement.querySelectorAll('.cell');
+                    if (cells[cellIdx]) {
+                        const cell = cells[cellIdx];
+                        
+                        if (ev.type === 'conflict') {
+                            if(window.SoundManager) window.SoundManager.playConflict();
+                            // Play Conflict Sequence: Paint each color -> Vanish
+                            
+                            // SORT colors: Red -> Yellow -> Blue
+                            const sortOrder = ['R', 'Y', 'B'];
+                            const colors = (ev.colors || []).sort((a, b) => sortOrder.indexOf(a) - sortOrder.indexOf(b));
+                            
+                            // 1. Paint sequence
+                            colors.forEach((cCode, i) => {
+                                setTimeout(() => {
+                                    if(window.SoundManager) window.SoundManager.playGlass(); // Ting for each claim attempt
+                                    cell.classList.remove('bg-white', 'bg-player-red', 'bg-player-yellow', 'bg-player-blue');
+                                    cell.classList.add(COLOR_MAP[cCode].code);
+                                    cell.style.animation = 'shine-pulse 1s forwards'; // Reuse shine
+                                }, i * 1000);
+                            });
+
+                            // 2. Vanish
+                            setTimeout(() => {
+                                cell.style.animation = 'vanish-anim 1s forwards';
+                                // After vanish, it's effectively empty
+                            }, colors.length * 1000);
+
+                        } else if (ev.type === 'success') {
+                            if(window.SoundManager) window.SoundManager.playGlass();
+                            cell.classList.remove('bg-white');
+                            cell.classList.add(COLOR_MAP[ev.color].code);
+                            cell.style.animation = 'shine-pulse 1s forwards';
+                        } else if (ev.type === 'flip') {
+                            if(window.SoundManager) window.SoundManager.playGlass();
+                            COLORS.forEach(c => cell.classList.remove(COLOR_MAP[c].code));
+                            cell.classList.add(COLOR_MAP[ev.color].code);
+                            cell.style.animation = 'flip-anim 0.5s forwards';
+                        }
                     }
-                }, 1000);
+                }, accumulatedDelay);
+
+                accumulatedDelay += duration;
+            });
+
+            setTimeout(() => {
+                isAnimating = false;
+                currentBoardState = pendingBoardState;
+                renderBoard(currentBoardState, gameData);
+            }, accumulatedDelay);
+        }
+
+        function updateTimerDisplay(text) {
+            // Override text to "0" if animating
+            const displayText = isAnimating ? "0" : text;
+
+            if(lastTimerValue !== displayText) {
+                if(window.SoundManager && displayText !== "0" && displayText !== "--") {
+                    window.SoundManager.playTick();
+                }
+                lastTimerValue = displayText;
+            }
+
+            timerDisplay.textContent = displayText;
+            timerDisplayMobile.textContent = displayText;
+            
+            if(displayText === "0") {
+                 const cls = "font-mono font-bold leading-none text-gray-300";
+                 timerDisplay.className = "text-5xl " + cls;
+                 timerDisplayMobile.className = "text-4xl " + cls;
+            } else {
+                const val = parseInt(displayText);
+                let colorClass = "text-black";
+                if(val <= 2) colorClass = "text-red-600";
+                const cls = `font-mono font-bold leading-none ${colorClass}`;
+                 timerDisplay.className = "text-5xl " + cls;
+                 timerDisplayMobile.className = "text-4xl " + cls;
             }
         }
 
+        function runClientTimer(deadline, gameData) {
+            if (localTimerInterval) clearInterval(localTimerInterval);
+            const updateTimer = () => {
+                // If animating, force UI to 0 and don't calc logic
+                if (isAnimating) {
+                    updateTimerDisplay("0");
+                    return;
+                }
+
+                const now = Date.now();
+                const diff = deadline - now;
+                const secondsLeft = Math.ceil(diff / 1000);
+                
+                // Fixed: clamp so it never shows > 5
+                const displaySeconds = Math.min(5, Math.max(0, secondsLeft - 1));
+                
+                if (secondsLeft > 0) {
+                    updateTimerDisplay(displaySeconds.toString());
+                } else {
+                    updateTimerDisplay("0");
+                    if (userId === gameData.hostId && !isResolving) {
+                        if (Date.now() > deadline) resolveTurn(gameData);
+                    }
+                }
+            };
+            updateTimer();
+            localTimerInterval = setInterval(updateTimer, 100);
+        }
+
         async function resolveTurn(gameData) {
+            if (isResolving) return;
             isResolving = true;
-            timerDisplay.textContent = "판정";
-
-            let board = JSON.parse(gameData.board);
-            // Deep copy board
-            board = board.map(row => [...row]);
-
+            let board = JSON.parse(gameData.board).map(r => [...r]);
             const players = gameData.players;
             let moves = [];
 
-            // 1. 플레이어 & AI 움직임 수집
-            // AI 움직임 생성 (호스트가 대신 수행)
             for (const pid in players) {
                 const p = players[pid];
                 if (p.isAI) {
                     const aiMove = getRandomMove(board);
-                    if (aiMove) moves.push({ id: pid, color: p.color, r: aiMove.r, c: aiMove.c });
+                    if (aiMove) moves.push({ id: pid, color: p.color, r: aiMove.r, c: aiMove.c, isOverwrite: false });
                 } else if (p.lastMove) {
-                    moves.push({ id: pid, color: p.color, r: p.lastMove.r, c: p.lastMove.c });
+                    moves.push({ id: pid, color: p.color, r: p.lastMove.r, c: p.lastMove.c, isOverwrite: p.lastMove.isOverwrite });
                 }
             }
 
-            // 2. 충돌 처리 (같은 칸 2명 이상이면 무효)
-            const posCounts = {};
-            moves.forEach(m => { const key = `${m.r},${m.c}`; posCounts[key] = (posCounts[key] || 0) + 1; });
-            const validMoves = moves.filter(m => posCounts[`${m.r},${m.c}`] === 1 && board[m.r][m.c] === '');
+            // Group moves by position to detect collisions specifically
+            const movesAtPos = {};
+            moves.forEach(m => {
+                const key = `${m.r},${m.c}`;
+                if(!movesAtPos[key]) movesAtPos[key] = [];
+                movesAtPos[key].push(m);
+            });
+            
+            const roundEvents = [];
+            const posCounts = {}; 
+            
+            // Process Conflicts and Calculate Total Animation Time
+            let totalAnimTime = 0;
 
-            // 3. 보드 적용 & 오델로 룰
-            validMoves.forEach(m => {
-                board[m.r][m.c] = m.color;
-                applyOthello(board, m.r, m.c, m.color);
+            for (const key in movesAtPos) {
+                const cellMoves = movesAtPos[key];
+                const [r, c] = key.split(',').map(Number);
+                posCounts[key] = cellMoves.length;
+
+                if (cellMoves.length > 1) {
+                    // Collision Detected
+                    const colors = cellMoves.map(m => m.color);
+                    roundEvents.push({ r, c, type: 'conflict', colors: colors });
+                    // Duration: (colors.length * 1000) + 1000
+                    totalAnimTime += (colors.length * 1000) + 1000;
+                }
+            }
+
+            const validMoves = moves.filter(m => {
+                if (posCounts[`${m.r},${m.c}`] > 1) return false;
+                const currentOwner = board[m.r][m.c];
+                if (m.isOverwrite) {
+                    if (currentOwner === '' || currentOwner === m.color) return false; 
+                    if (players[m.id].overwrites <= 0) return false; 
+                    return true;
+                } else {
+                    return currentOwner === '';
+                }
             });
 
-            // 4. 점수 계산
+            const overwriteConsumers = new Set();
+            validMoves.forEach(m => {
+                board[m.r][m.c] = m.color;
+                roundEvents.push({ r: m.r, c: m.c, color: m.color, type: 'success' });
+                totalAnimTime += 1000; // Success anim
+
+                if(m.isOverwrite) overwriteConsumers.add(m.id);
+                
+                const flips = applyOthello(board, m.r, m.c, m.color);
+                flips.forEach(f => {
+                    roundEvents.push({ r: f.r, c: f.c, color: m.color, type: 'flip' });
+                    totalAnimTime += 500; // Flip anim
+                });
+            });
+
             let newScores = {};
             let filled = 0;
             for(let r=0; r<BOARD_SIZE; r++) {
                 for(let c=0; c<BOARD_SIZE; c++) {
                     const cell = board[r][c];
-                    if(cell) {
-                        newScores[cell] = (newScores[cell] || 0) + 1;
-                        filled++;
-                    }
+                    if(cell) { newScores[cell] = (newScores[cell] || 0) + 1; filled++; }
                 }
             }
 
-            // 5. 플레이어 상태 업데이트
             const updatedPlayers = {};
             for (const pid in players) {
-                updatedPlayers[pid] = {
-                    ...players[pid],
-                    lastMove: null, // 초기화
-                    score: newScores[players[pid].color] || 0
+                let newOverwrites = players[pid].overwrites;
+                if (overwriteConsumers.has(pid)) newOverwrites--;
+                updatedPlayers[pid] = { 
+                    ...players[pid], lastMove: null, score: newScores[players[pid].color] || 0, overwrites: newOverwrites
                 };
             }
 
-            const isEnd = filled >= (BOARD_SIZE * BOARD_SIZE);
+            const isEnd = filled >= (BOARD_SIZE * BOARD_SIZE) - 1;
+            
+            // Add Animation Duration to Deadline
+            // Base Buffer (1000) + Total Anim Time + Safety Margin (500)
+            const nextDeadline = Date.now() + TURN_DURATION_MS + NETWORK_BUFFER_MS + totalAnimTime + 500;
 
-            // 6. DB 저장
             await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'games', gameId), {
-                board: JSON.stringify(board),
-                players: updatedPlayers,
-                turn: gameData.turn + 1,
-                timer: 5, // 시간 리셋
-                status: isEnd ? 'finished' : 'playing'
+                board: JSON.stringify(board), players: updatedPlayers,
+                turn: gameData.turn + 1, turnDeadline: nextDeadline, status: isEnd ? 'finished' : 'playing',
+                lastRoundEvents: JSON.stringify(roundEvents)
             });
 
+            selectedCell = null;
             isResolving = false;
         }
 
-        // 보드 클릭 (플레이어 액션)
         window.handleCellClick = async (r, c) => {
-            if (!gameId || !myColor || isResolving) return;
-            if (currentBoardState[r][c] !== '') return;
+            if (!gameId || !myColor || isResolving || isAnimating) return;
 
-            // 시각적 피드백
-            selectedCell = { r, c };
-            renderBoard(currentBoardState, { status: 'playing' }); // 재렌더링으로 테두리 표시
-
-            // 서버 전송
-            await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'games', gameId), {
-                [`players.${userId}.lastMove`]: { r, c }
-            });
+            const cellColor = currentBoardState[r][c];
+            let isOverwrite = false;
+            if (cellColor !== '') {
+                if (cellColor === myColor) return; 
+                if (myOverwritesLeft <= 0) return; 
+                isOverwrite = true;
+            }
+            selectedCell = { r, c, isOverwrite };
+            renderBoard(currentBoardState, { status: 'playing' }); 
+            try {
+                await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'games', gameId), {
+                    [`players.${userId}.lastMove`]: { r, c, isOverwrite }
+                });
+            } catch (e) {
+                console.error("Send failed", e);
+                selectedCell = null;
+                renderBoard(currentBoardState, { status: 'playing' });
+            }
         };
 
-        // --- 유틸리티 & 렌더링 ---
-
-        function renderQueueList(docs) {
-            queueCountEl.textContent = `${docs.length}명`;
-            queueListEl.innerHTML = '';
-            
-            if (docs.length === 0) {
-                queueListEl.innerHTML = '<p class="text-gray-400 text-sm text-center py-4">대기 중인 플레이어가 없습니다.</p>';
-                return;
-            }
-
-            docs.forEach(d => {
-                const isMe = d.id === userId;
-                const el = document.createElement('div');
-                el.className = `queue-item p-2 rounded-lg text-sm flex justify-between items-center ${isMe ? 'bg-blue-200 border border-blue-300 shadow-sm' : 'bg-white border border-gray-100'}`;
-                el.innerHTML = `
-                    <span class="font-mono ${isMe ? 'font-bold text-blue-700' : 'text-gray-600'}">
-                        ${isMe ? '나 (Me)' : d.id.substring(0, 6) + '..'}
-                    </span>
-                    <span class="text-xs text-gray-400">대기중</span>
-                `;
-                queueListEl.appendChild(el);
-            });
-        }
-
         function renderBoard(board, gameData) {
-            boardElement.innerHTML = '';
+            const cells = boardElement.querySelectorAll('.cell');
+            cells.forEach(el => el.remove());
+            const waitingScreen = boardElement.querySelector('.col-span-5');
+            if(waitingScreen) {
+                if(gameData.status === 'playing') waitingScreen.classList.add('hidden');
+                else waitingScreen.classList.remove('hidden');
+            }
+            const frag = document.createDocumentFragment();
             for (let r = 0; r < BOARD_SIZE; r++) {
                 for (let c = 0; c < BOARD_SIZE; c++) {
                     const cellVal = board[r][c];
                     const div = document.createElement('div');
-                    div.className = `cell cell-player-color rounded-md flex items-center justify-center shadow-sm ${cellVal ? 'claimed' : 'bg-white'}`;
-                    
+                    div.className = `cell w-full h-full flex items-center justify-center text-white font-bold text-lg`;
                     if (cellVal) {
-                        div.classList.add(COLOR_MAP[cellVal].code);
-                    } else if (gameData.status === 'playing' && myColor) {
-                        div.onclick = () => window.handleCellClick(r, c);
-                        // 내 선택 표시
+                        div.className += ` ${COLOR_MAP[cellVal].code} occupied-immutable`;
+                        if (gameData.status === 'playing' && myColor && cellVal !== myColor && myOverwritesLeft > 0) div.style.cursor = "crosshair";
+                    } else {
+                        div.classList.add('bg-white');
+                    }
+                    if (gameData.status === 'playing' && myColor && !isAnimating) {
                         if (selectedCell && selectedCell.r === r && selectedCell.c === c) {
-                             div.classList.add('ring-4', 'ring-gray-800', COLOR_MAP[myColor].light);
+                            div.className = `cell w-full h-full flex items-center justify-center text-white font-bold text-lg ${COLOR_MAP[myColor].code}`;
+                            if (selectedCell.isOverwrite) {
+                                div.classList.add('breaker-shine', 'ring-4', 'ring-inset', 'ring-black');
+                            } else {
+                                div.classList.add('ring-4', 'ring-inset', 'ring-black/10');
+                            }
+                        } else {
+                            const isEnemy = cellVal && cellVal !== myColor;
+                            if (!cellVal || (isEnemy && myOverwritesLeft > 0)) div.onclick = () => window.handleCellClick(r, c);
                         }
                     }
-                    boardElement.appendChild(div);
+                    frag.appendChild(div);
                 }
             }
+            boardElement.insertBefore(frag, boardElement.firstChild);
+        }
+
+        function renderQueueList(docs) {
+            queueCountEl.textContent = docs.length;
+            queueListEl.innerHTML = '';
+            if (docs.length === 0) {
+                queueListEl.innerHTML = '<p class="text-gray-300 text-xs text-center py-8 uppercase tracking-widest">No players waiting</p>';
+                return;
+            }
+            docs.forEach(d => {
+                const isMe = d.id === userId;
+                const nick = d.data().nickname || "Unknown";
+                const el = document.createElement('div');
+                el.className = `queue-item p-3 border text-xs flex justify-between items-center ${isMe ? 'bg-black text-white border-black' : 'bg-white text-gray-600 border-gray-100'}`;
+                el.innerHTML = `<span class="font-bold uppercase">${isMe ? 'YOU' : nick}</span><span class="text-[10px] uppercase tracking-widest opacity-70">WAITING</span>`;
+                queueListEl.appendChild(el);
+            });
         }
 
         function renderScoreboard(players) {
             scoreList.innerHTML = '';
-            const list = Object.values(players).sort((a,b) => b.score - a.score);
-            list.forEach(p => {
+            COLORS.forEach(colorCode => {
+                const playerEntry = Object.entries(players).find(([uid, p]) => p.color === colorCode);
+                let score = 0; let label = "EMPTY"; let isMe = false; let overwrites = 0;
+                if (playerEntry) {
+                    const [uid, p] = playerEntry; score = p.score; overwrites = p.overwrites;
+                    if (p.isAI) label = p.nickname;
+                    else if (uid === userId) { label = p.nickname + " (YOU)"; isMe = true; }
+                    else label = p.nickname;
+                }
                 const li = document.createElement('li');
-                li.className = "flex justify-between items-center p-2 rounded bg-white shadow-sm";
-                li.innerHTML = `
-                    <span class="flex items-center gap-2">
-                        <div class="w-3 h-3 rounded-full bg-${COLOR_MAP[p.color].code}-500"></div>
-                        <span class="${p.color === myColor ? 'font-bold' : ''}">${p.isAI ? 'AI' : 'Player'}</span>
-                    </span>
-                    <span class="font-bold text-lg">${p.score}</span>
-                `;
+                li.className = "flex justify-between items-center p-3 bg-white border border-gray-100 shadow-sm";
+                li.innerHTML = `<div class="flex items-center gap-3"><div class="w-4 h-4 rounded-full ${COLOR_MAP[colorCode].code}"></div><div class="flex flex-col"><span class="text-sm font-bold uppercase tracking-wider ${isMe ? 'text-black' : 'text-gray-600'}">${label}</span>${playerEntry && !playerEntry[1].isAI ? `<span class="text-[10px] text-gray-400">BREAKERS: ${overwrites}</span>` : ''}</div></div><span class="font-mono font-black text-xl">${score}</span>`;
                 scoreList.appendChild(li);
             });
         }
         
-        // 오델로 알고리즘 (8방향 뒤집기)
         function applyOthello(board, r, c, color) {
             const dirs = [[-1,0],[1,0],[0,-1],[0,1],[-1,-1],[-1,1],[1,-1],[1,1]];
+            let flippedCells = [];
             dirs.forEach(([dr, dc]) => {
                 let nr = r + dr, nc = c + dc, flippable = [];
                 while(nr>=0 && nr<BOARD_SIZE && nc>=0 && nc<BOARD_SIZE) {
                     if(board[nr][nc] === '') break;
                     if(board[nr][nc] === color) {
-                        flippable.forEach(f => board[f.r][f.c] = color);
+                        flippable.forEach(f => {
+                            board[f.r][f.c] = color;
+                            flippedCells.push({r: f.r, c: f.c});
+                        });
                         break;
                     }
                     flippable.push({r:nr, c:nc});
                     nr += dr; nc += dc;
                 }
             });
+            return flippedCells;
         }
 
         function getRandomMove(board) {
             let empties = [];
-            for(let r=0; r<BOARD_SIZE; r++) 
-                for(let c=0; c<BOARD_SIZE; c++) 
-                    if(board[r][c] === '') empties.push({r,c});
+            for(let r=0; r<BOARD_SIZE; r++) for(let c=0; c<BOARD_SIZE; c++) if(board[r][c] === '') empties.push({r,c});
             return empties.length ? empties[Math.floor(Math.random()*empties.length)] : null;
         }
 
@@ -616,19 +1018,18 @@
              const winner = Object.values(players).sort((a, b) => b.score - a.score)[0];
              const myScore = players[userId]?.score || 0;
              const isWin = players[userId] && winner.color === players[userId].color;
-             
-             document.getElementById('modal-title').textContent = isWin ? "승리! 🎉" : "게임 종료";
-             document.getElementById('modal-content').textContent = `1등: ${COLOR_MAP[winner.color].label} (${winner.score}점)\n내 점수: ${myScore}점`;
+             const title = isWin ? "VICTORY" : "GAME OVER";
+             const content = `WINNER: ${winner.nickname} (${winner.score})\nYOUR SCORE: ${myScore}`;
+             document.getElementById('modal-title').textContent = title;
+             document.getElementById('modal-content').textContent = content;
              document.getElementById('message-modal').classList.remove('hidden');
         }
 
         window.closeModal = () => document.getElementById('message-modal').classList.add('hidden');
-        
         function resetUI() {
-            joinBtn.disabled = false;
-            joinBtn.textContent = "🔍 매칭 시작 (대기열 참가)";
-            joinBtn.classList.remove('hidden');
-            aiBtn.classList.add('hidden');
+            joinBtn.disabled = false; joinBtn.textContent = "FIND MATCH";
+            nicknameInput.disabled = false; nicknameSection.classList.remove('hidden');
+            gameButtonsDiv.classList.add('hidden'); aiBtn.classList.add('hidden');
         }
     </script>
 </body>
