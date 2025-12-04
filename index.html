@@ -81,6 +81,16 @@
             animation: rainbowCycle 20s ease infinite;
         }
 
+        /* 새로운 오버라이트 박스 스타일 */
+        .overwrite-box {
+            width: 14px;
+            height: 14px;
+            border: 1px solid rgba(255, 255, 255, 0.5);
+            box-shadow: 0 0 3px rgba(0, 0, 0, 0.4);
+            margin: 0 2px;
+            transition: opacity 0.3s ease-out;
+        }
+
         .bg-player-red { background-color: rgb(255, 0, 0); }
         .bg-player-yellow { background-color: rgb(255, 255, 0); }
         .bg-player-blue { background-color: rgb(0, 0, 255); }
@@ -124,19 +134,19 @@
             
             <div class="mb-8 flex justify-between items-end">
                 <h1 class="text-6xl md:text-7xl font-black tracking-tighter title-rainbow">COLOR</h1>
-                <div class="text-right hidden md:block">
+                <div id="desktop-timer-container" class="text-right hidden md:block">
                     <p class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">TIMER</p>
                     <p class="text-5xl font-mono font-bold leading-none" id="timer-display">--</p>
                 </div>
             </div>
 
-            <div class="flex md:hidden justify-between items-end border-b-2 border-black pb-4 mb-6">
+            <div id="my-info-mobile" class="flex md:hidden justify-between items-end border-b-2 border-black pb-4 mb-6">
                 <div>
-                    <p class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">STATUS</p>
-                    <p class="text-lg font-bold uppercase tracking-tight" id="my-status-mobile">IDLE</p>
+                    <p class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">PLAYER</p>
+                    <p class="text-lg font-black uppercase tracking-tight truncate" id="my-nickname-mobile" style="color:#1a1a1a;">-</p>
                 </div>
-                <div class="text-right">
-                    <p class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">TIMER</p>
+                <div id="mobile-timer-container" class="text-right">
+                    <p class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">TURN TIMER</p>
                     <p class="text-4xl font-mono font-bold leading-none" id="timer-display-mobile">--</p>
                 </div>
             </div>
@@ -149,10 +159,13 @@
                     </div>
 
                     <div id="message-modal" class="hidden absolute inset-0 z-50 flex items-center justify-center backdrop-blur-[2px] bg-black/30">
-                        <div class="modal-content bg-white/20 border border-white/40 p-6 w-[80%] max-w-sm text-center backdrop-blur-md shadow-[0_8px_32px_0_rgba(31,38,135,0.37)] rounded-xl">
+                        <div class="modal-content bg-white/20 border border-white/40 p-6 w-[80%] max-w-sm text-center backdrop-blur-md shadow-[0_8px_32px_0_rgba(31,38,135,0.37)] rounded-xl relative">
+                            <button onclick="window.closeModal()" class="absolute top-2 right-3 text-white text-2xl font-bold p-1 leading-none hover:text-gray-300">&times;</button>
+                            
                             <h3 id="modal-title" class="text-2xl font-black uppercase mb-3 tracking-tighter text-white drop-shadow-md">TITLE</h3>
                             <p id="modal-content" class="text-white mb-6 font-bold whitespace-pre-line leading-relaxed text-sm drop-shadow-sm">Content</p>
-                            <button onclick="location.reload()" class="w-full bg-white/20 hover:bg-white/40 text-white border border-white/50 font-black py-3 text-xs tracking-[0.2em] uppercase transition-all hover:scale-105 rounded-lg shadow-lg">
+                            
+                            <button id="modal-return-to-lobby" onclick="location.reload()" class="w-full bg-white/20 hover:bg-white/40 text-white border border-white/50 font-black py-3 text-xs tracking-[0.2em] uppercase transition-all hover:scale-105 rounded-lg shadow-lg hidden">
                                 RETURN TO LOBBY
                             </button>
                         </div>
@@ -160,20 +173,18 @@
 
                 </div>
             </div>
-
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mt-auto items-center">
-                <div id="breaker-status" class="hidden flex flex-col justify-center h-full p-4 bg-gray-100 border border-gray-200">
-                    <p class="text-xs font-bold text-gray-500 uppercase tracking-widest mb-1">BREAKERS (OVERWRITE)</p>
-                    <div class="flex items-center gap-2">
-                        <span id="breaker-count" class="text-3xl font-black text-black">1</span>
-                        <span class="text-sm font-bold text-gray-400">/ 1 LEFT</span>
-                    </div>
-                    <p class="text-[10px] text-gray-400 mt-1">Click opponent's cell to overwrite.</p>
+            
+            <div class="flex flex-col items-center mt-auto w-full">
+                
+                <div id="overwrite-ui-container" class="w-full max-w-[600px] flex justify-end items-center px-2 mb-4 hidden">
+                    <p class="text-xs font-bold text-gray-500 uppercase tracking-widest mr-2">OVERWRITE</p>
+                    <div id="overwrite-ui-display" class="flex items-center">
+                        </div>
                 </div>
 
-                <div class="flex flex-col gap-3 col-span-1 md:col-span-2 lg:col-span-1 w-full">
+                <div class="flex flex-col gap-3 w-full max-w-md">
                     <div id="nickname-section" class="w-full">
-                        <input type="text" id="nickname-input" placeholder="ENTER NICKNAME" maxlength="10" 
+                        <input type="text" id="nickname-input" placeholder="ENTER YOUR NAME" maxlength="10" 
                                class="w-full bg-gray-100 border-2 border-gray-200 p-4 font-bold text-center uppercase tracking-widest focus:outline-none focus:border-black transition-colors mb-3">
                         <button id="join-queue-btn" disabled
                                 class="w-full bg-black text-white hover:bg-gray-800 font-bold py-4 text-sm tracking-widest uppercase transition-colors disabled:opacity-30 disabled:cursor-not-allowed">
@@ -183,35 +194,35 @@
 
                     <div id="game-buttons" class="hidden flex flex-col gap-2 w-full">
                         <button id="force-ai-btn" 
-                                class="w-full bg-white text-black border-2 border-black hover:bg-black hover:text-white font-bold py-3 text-xs tracking-widest uppercase transition-colors hidden">
+                                class="w-full bg-white text-black border-2 border-black hover:bg-black hover:text-white font-bold py-3 text-xs tracking-widest uppercase transition-colors">
                             Solo with AI
                         </button>
                         <button id="start-2p-ai-btn"
-                                class="w-full bg-gray-900 text-yellow-400 border-2 border-gray-900 hover:bg-gray-800 font-bold py-3 text-xs tracking-widest uppercase transition-colors hidden shadow-lg">
+                                class="w-full bg-gray-900 text-yellow-400 border-2 border-gray-900 hover:bg-gray-800 font-bold py-3 text-xs tracking-widest uppercase transition-colors shadow-lg">
                             Start with AI (2P + 1 AI)
                         </button>
                     </div>
+
+                    <button id="return-to-lobby-btn" onclick="location.reload()" class="w-full bg-black text-white hover:bg-gray-800 font-bold py-4 text-sm tracking-widest uppercase transition-colors hidden">
+                        RETURN TO LOBBY
+                    </button>
                 </div>
             </div>
+            
+            <span id="my-nickname-display" class="hidden"></span>
+            <span id="my-color-display" class="hidden"></span>
         </div>
 
         <div class="w-full lg:w-96 bg-gray-50 border-t lg:border-t-0 lg:border-l border-gray-200 p-8 flex flex-col gap-8">
-            <div>
-                <p class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2">PROFILE</p>
-                <div class="bg-white border border-gray-200 p-6 shadow-sm">
-                    <div id="profile-hidden" class="text-center py-4">
-                        <p class="text-xs text-gray-400">ENTER NICKNAME TO PLAY</p>
-                    </div>
-                    <div id="profile-visible" class="hidden">
-                        <p class="text-xs text-gray-500 mb-1">PLAYER</p>
-                        <p class="font-black text-2xl uppercase mb-4 truncate" id="my-nickname-display">-</p>
-                        <p class="text-xs text-gray-500 mb-1">TEAM COLOR</p>
-                        <p class="font-bold text-xl uppercase" id="my-color-display">SPECTATOR</p>
-                    </div>
-                </div>
+            
+            <div id="scores-section" class="hidden">
+                <p class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2">SCORES</p>
+                <ul id="score-list" class="space-y-2">
+                    <li class="text-gray-300 text-xs uppercase tracking-widest py-2">Game not started</li>
+                </ul>
             </div>
 
-            <div class="flex-1 min-h-[200px] flex flex-col">
+            <div id="queue-section" class="flex-1 min-h-[200px] flex flex-col">
                 <div class="flex justify-between items-center mb-4 border-b border-gray-200 pb-2">
                     <p class="text-[10px] font-bold text-gray-400 uppercase tracking-widest">QUEUE</p>
                     <span id="queue-count" class="text-xs font-bold bg-black text-white px-2 py-0.5">0</span>
@@ -219,13 +230,6 @@
                 <div id="queue-list" class="flex-1 overflow-y-auto space-y-2 pr-2">
                     <p class="text-gray-300 text-xs text-center py-8 uppercase tracking-widest">No players waiting</p>
                 </div>
-            </div>
-
-            <div>
-                <p class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2">SCORES</p>
-                <ul id="score-list" class="space-y-2">
-                    <li class="text-gray-300 text-xs uppercase tracking-widest py-2">Game not started</li>
-                </ul>
             </div>
         </div>
     </div>
@@ -246,6 +250,9 @@
                 const AudioContext = window.AudioContext || window.webkitAudioContext;
                 this.ctx = new AudioContext();
                 this.playAmbient();
+                this.resetActivityTimer();
+                document.addEventListener('mousemove', this.resetActivityTimer.bind(this));
+                document.addEventListener('keydown', this.resetActivityTimer.bind(this));
             },
             playAmbient: function() {
                 const t = this.ctx.currentTime;
@@ -354,6 +361,20 @@
 
                 osc.start();
                 osc.stop(t + 0.05);
+            },
+            activityTimer: null,
+            INACTIVITY_TIMEOUT_MS: 60000, // 60 seconds
+
+            resetActivityTimer: function() {
+                clearTimeout(this.activityTimer);
+                this.activityTimer = setTimeout(async () => {
+                    // Only log out if we are not in a game, but have a nickname/queue ticket
+                    if (myNickname && !gameId) {
+                        alert("You were automatically logged out due to 1 minute of inactivity.");
+                        await leaveQueue();
+                        resetLocalStateAndUI();
+                    }
+                }, this.INACTIVITY_TIMEOUT_MS);
             }
         };
 
@@ -362,14 +383,14 @@
         const TURN_DURATION_MS = 5000; // Regular turn
         const FIRST_TURN_DURATION_MS = 10000; // First turn only
         const NETWORK_BUFFER_MS = 1000;
-        const MAX_OVERWRITES = 1;
-
+        const MAX_OVERWRITES = 2; 
+        
         const COLORS = ['R', 'Y', 'B']; 
         
         const COLOR_MAP = {
-            'R': { code: 'bg-player-red', text: 'text-player-red', label: 'RED' },
-            'Y': { code: 'bg-player-yellow', text: 'text-player-yellow', label: 'YELLOW' },
-            'B': { code: 'bg-player-blue', text: 'text-player-blue', label: 'BLUE' },
+            'R': { code: 'bg-player-red', text: 'text-player-red', label: 'RED', html_color: 'rgb(255, 0, 0)' },
+            'Y': { code: 'bg-player-yellow', text: 'text-player-yellow', label: 'YELLOW', html_color: 'rgb(210, 180, 0)' },
+            'B': { code: 'bg-player-blue', text: 'text-player-blue', label: 'BLUE', html_color: 'rgb(0, 0, 255)' },
         };
         
         const firebaseConfig = {
@@ -393,6 +414,7 @@
         let lastProcessedTurn = 0; // Track animations
         let isAnimating = false; // Flag to block renders during anim
         let pendingBoardState = null; // Buffer new board during anim
+        let pendingGameEndData = null; // Buffer game end data during final animation
         
         let unsubscribeQueue = null;
         let unsubscribeGame = null;
@@ -410,14 +432,26 @@
         const boardElement = document.getElementById('game-board');
         const timerDisplay = document.getElementById('timer-display');
         const timerDisplayMobile = document.getElementById('timer-display-mobile');
+        const scoresSection = document.getElementById('scores-section');
+        const queueSection = document.getElementById('queue-section');
         const scoreList = document.getElementById('score-list');
         
-        const profileHidden = document.getElementById('profile-hidden');
-        const profileVisible = document.getElementById('profile-visible');
+        const desktopTimerContainer = document.getElementById('desktop-timer-container');
+        const mobileTimerContainer = document.getElementById('mobile-timer-container');
+        
+        // 닉네임 표시를 위한 숨겨진 요소들
         const myNicknameDisplay = document.getElementById('my-nickname-display');
-        const myColorDisplay = document.getElementById('my-color-display');
-        const breakerStatusDiv = document.getElementById('breaker-status');
-        const breakerCountEl = document.getElementById('breaker-count');
+        const myColorDisplay = document.getElementById('my-color-display'); 
+        
+        // 모바일 헤더 요소들
+        const myNicknameMobile = document.getElementById('my-nickname-mobile'); 
+
+        // 덮어쓰기 상태 UI 요소
+        const overwriteUIDisplay = document.getElementById('overwrite-ui-display');
+        // 덮어쓰기 UI 컨테이너
+        const overwriteUIContainer = document.getElementById('overwrite-ui-container');
+        // 게임 오버 시 리턴 투 로비 버튼
+        const returnToLobbyBtn = document.getElementById('return-to-lobby-btn');
 
         let currentBoardState = [];
         let selectedCell = null; 
@@ -434,31 +468,41 @@
             onAuthStateChanged(auth, (user) => {
                 if (user) userId = user.uid;
             });
+            // 초기 TIMER 숨기기
+            desktopTimerContainer.classList.add('hidden');
+            mobileTimerContainer.classList.add('hidden');
+            // 초기 OVERWRITE UI 숨기기
+            overwriteUIContainer.classList.add('hidden');
         }
         window.onload = init;
 
+        // --- 닉네임 입력 및 Join 로직 ---
         nicknameInput.addEventListener('input', (e) => {
+            // 입력 내용이 있으면 disabled 해제, 없으면 disabled 유지
             joinBtn.disabled = e.target.value.trim().length === 0;
+            if(window.SoundManager) window.SoundManager.resetActivityTimer();
         });
 
         joinBtn.addEventListener('click', async () => {
             if (!userId) return;
             const val = nicknameInput.value.trim();
             if(!val) return;
-            myNickname = val;
+            myNickname = val.toUpperCase().slice(0, 10);
             
             if(window.SoundManager) window.SoundManager.init();
+            if(window.SoundManager) window.SoundManager.resetActivityTimer();
+
+            // UI 업데이트: 닉네임 입력 섹션 숨기기, 게임 버튼 표시
+            nicknameSection.classList.add('hidden'); 
+            gameButtonsDiv.classList.remove('hidden'); 
+            
+            // 닉네임 반영 (숨겨진 요소와 모바일 헤더)
+            myNicknameDisplay.textContent = myNickname;
+            myNicknameMobile.textContent = myNickname; 
 
             joinBtn.textContent = "SEARCHING...";
             joinBtn.disabled = true;
             nicknameInput.disabled = true;
-            nicknameSection.classList.add('hidden'); 
-            gameButtonsDiv.classList.remove('hidden'); 
-            aiBtn.classList.remove('hidden');
-
-            profileHidden.classList.add('hidden');
-            profileVisible.classList.remove('hidden');
-            myNicknameDisplay.textContent = myNickname;
 
             try {
                 const queueRef = collection(db, 'artifacts', appId, 'public', 'data', 'queue');
@@ -478,6 +522,8 @@
                 resetUI();
             }
         });
+        // --- 닉네임 입력 및 Join 로직 끝 ---
+
 
         function watchMyTicket(docRef) {
             unsubscribeMyTicket = onSnapshot(docRef, (docSnap) => {
@@ -498,6 +544,12 @@
                     const top3 = docs.slice(0, 3);
                     if (top3[2].id === userId) createMatchedGame(top3);
                 }
+                // AI 버튼 표시/숨김 로직
+                if (queueDocId && docs.length >= 1) { 
+                    aiBtn.classList.remove('hidden');
+                } else {
+                    aiBtn.classList.add('hidden');
+                }
                 if (queueDocId && docs.length === 2) {
                     start2pBtn.classList.remove('hidden');
                 } else {
@@ -510,6 +562,7 @@
 
         start2pBtn.addEventListener('click', async () => {
             if(window.SoundManager) window.SoundManager.init();
+            if(window.SoundManager) window.SoundManager.resetActivityTimer(); 
             if (!queueDocId || currentQueueDocs.length !== 2) return;
             const top2 = currentQueueDocs.slice(0, 2);
             await initGameWithPlayers(top2, true); 
@@ -563,6 +616,7 @@
 
         aiBtn.addEventListener('click', async () => {
             if(window.SoundManager) window.SoundManager.init();
+            if(window.SoundManager) window.SoundManager.resetActivityTimer(); 
             if (!queueDocId) return;
             await leaveQueue();
             const newGameRef = doc(collection(db, 'artifacts', appId, 'public', 'data', 'games'));
@@ -584,39 +638,205 @@
         });
 
         async function leaveQueue() {
+            if (unsubscribeQueue) { unsubscribeQueue(); unsubscribeQueue = null; }
+            if (unsubscribeMyTicket) { unsubscribeMyTicket(); unsubscribeMyTicket = null; }
             if (queueDocId) {
                 await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'queue', queueDocId));
                 queueDocId = null;
             }
         }
 
+        function resetLocalStateAndUI() {
+            if (localTimerInterval) clearInterval(localTimerInterval);
+            if (unsubscribeQueue) { unsubscribeQueue(); unsubscribeQueue = null; }
+            if (unsubscribeGame) { unsubscribeGame(); unsubscribeGame = null; }
+            if (unsubscribeMyTicket) { unsubscribeMyTicket(); unsubscribeMyTicket = null; }
+
+            myNickname = "";
+            queueDocId = null;
+            gameId = null;
+            myColor = null;
+            myOverwritesLeft = MAX_OVERWRITES;
+            lastProcessedTurn = 0;
+            isAnimating = false;
+            pendingBoardState = null;
+            pendingGameEndData = null; // Clear pending game end data
+            selectedCell = null;
+            isResolving = false;
+            lastTimerValue = "";
+            
+            // UI 초기화 및 닉네임 입력 필드 복원
+            nicknameSection.classList.remove('hidden');
+            joinBtn.textContent = "Find Match";
+            joinBtn.disabled = true;
+            nicknameInput.disabled = false;
+            nicknameInput.value = "";
+            gameButtonsDiv.classList.add('hidden'); // AI 버튼 숨김
+
+            // 닉네임 색상 초기화
+            myNicknameDisplay.textContent = ''; 
+            myNicknameMobile.textContent = '-';
+            myNicknameMobile.style.color = '#1a1a1a';
+            
+            myColorDisplay.textContent = 'SPECTATOR';
+
+            // 덮어쓰기 UI 숨기기
+            overwriteUIDisplay.innerHTML = '';
+            overwriteUIContainer.classList.add('hidden');
+            
+            // 로비 버튼 숨기기
+            returnToLobbyBtn.classList.add('hidden');
+
+            // SCORES 숨기기, QUEUE 표시
+            scoresSection.classList.add('hidden');
+            queueSection.classList.remove('hidden');
+            
+            // TIMER 숨기기
+            desktopTimerContainer.classList.add('hidden');
+            mobileTimerContainer.classList.add('hidden');
+
+            updateTimerDisplay("--");
+
+            renderQueueList([]);
+            scoreList.innerHTML = '<li class="text-gray-300 text-xs uppercase tracking-widest py-2">Game not started</li>';
+            
+            // Re-render empty board 
+            boardElement.innerHTML = `<div class="col-span-5 flex items-center justify-center h-full text-white text-xl font-bold tracking-widest uppercase bg-waiting-rainbow shadow-inner">
+                        Waiting for match
+                    </div>
+
+                    <div id="message-modal" class="hidden absolute inset-0 z-50 flex items-center justify-center backdrop-blur-[2px] bg-black/30">
+                        <div class="modal-content bg-white/20 border border-white/40 p-6 w-[80%] max-w-sm text-center backdrop-blur-md shadow-[0_8px_32px_0_rgba(31,38,135,0.37)] rounded-xl relative">
+                            <button onclick="window.closeModal()" class="absolute top-2 right-3 text-white text-2xl font-bold p-1 leading-none hover:text-gray-300">&times;</button>
+                            <h3 id="modal-title" class="text-2xl font-black uppercase mb-3 tracking-tighter text-white drop-shadow-md">TITLE</h3>
+                            <p id="modal-content" class="text-white mb-6 font-bold whitespace-pre-line leading-relaxed text-sm drop-shadow-sm">Content</p>
+                            <button id="modal-return-to-lobby" onclick="location.reload()" class="w-full bg-white/20 hover:bg-white/40 text-white border border-white/50 font-black py-3 text-xs tracking-[0.2em] uppercase transition-all hover:scale-105 rounded-lg shadow-lg hidden">
+                                RETURN TO LOBBY
+                            </button>
+                        </div>
+                    </div>`;
+
+            if(window.SoundManager.activityTimer) clearTimeout(window.SoundManager.activityTimer);
+        }
+
         async function enterGame(id) {
             gameId = id;
             await leaveQueue();
+            
             nicknameSection.classList.add('hidden');
-            gameButtonsDiv.classList.add('hidden');
+            gameButtonsDiv.classList.remove('hidden');
             
             unsubscribeGame = onSnapshot(doc(db, 'artifacts', appId, 'public', 'data', 'games', gameId), (docSnap) => {
                 if(!docSnap.exists()) {
                     if(localTimerInterval) clearInterval(localTimerInterval);
+                    resetLocalStateAndUI();
                     return;
                 }
                 handleGameUpdate(docSnap.data());
             });
+            
+            // 게임 시작 시 QUEUE 숨기고 SCORES 표시
+            queueSection.classList.add('hidden');
+            scoresSection.classList.remove('hidden');
+            
+            // TIMER 표시
+            desktopTimerContainer.classList.remove('hidden');
+            mobileTimerContainer.classList.remove('hidden'); // 모바일 타이머 컨테이너를 보이게 설정
         }
 
+        // --- 새로운 덮어쓰기 UI 렌더링 함수 ---
+        function renderOverwriteUI(overwritesLeft) {
+            overwriteUIDisplay.innerHTML = '';
+            
+            for (let i = 0; i < MAX_OVERWRITES; i++) {
+                const box = document.createElement('div');
+                box.className = 'overwrite-box';
+                
+                if (i < overwritesLeft) {
+                    // 남은 횟수는 그라데이션 적용
+                    box.classList.add('bg-waiting-rainbow');
+                } else {
+                    // 사용한 횟수는 회색으로 표시
+                    box.style.backgroundColor = '#d1d5db'; // gray-300
+                }
+                overwriteUIDisplay.appendChild(box);
+            }
+
+            // 덮어쓰기 UI 전체 표시
+            overwriteUIContainer.classList.remove('hidden');
+        }
+        // --- 새로운 덮어쓰기 UI 렌더링 함수 끝 ---
+
+
         function handleGameUpdate(gameData) {
+            if(window.SoundManager) window.SoundManager.resetActivityTimer();
+            
+            // 게임 시작 시 QUEUE 숨기고 SCORES 표시 (안전장치)
+            queueSection.classList.add('hidden');
+            scoresSection.classList.remove('hidden');
+            
+            // TIMER 표시 상태 업데이트
+            // 데스크톱 (가로 모드)에서는 TIMER만 보이도록 (HTML 클래스 md:block/hidden 유지)
+            desktopTimerContainer.classList.remove('hidden');
+            
+            // 모바일 (세로 모드)에서는 TURN TIMER만 보이도록 (HTML 클래스 md:hidden 유지)
+            mobileTimerContainer.classList.remove('hidden');
+
+
             const myData = gameData.players[userId];
             if (myData) {
                 myColor = myData.color;
                 myOverwritesLeft = myData.overwrites;
                 const cInfo = COLOR_MAP[myColor];
+                
+                // 닉네임 텍스트 색상을 배정된 색상으로 변경
+                myNicknameDisplay.textContent = myData.nickname;
+                myNicknameMobile.textContent = myData.nickname;
+                myNicknameMobile.style.color = cInfo.html_color;
+                
                 myColorDisplay.textContent = cInfo.label;
-                myColorDisplay.className = `font-bold text-xl uppercase ${cInfo.text}`;
-                breakerStatusDiv.classList.remove('hidden');
-                breakerCountEl.textContent = myOverwritesLeft;
-                if(myOverwritesLeft === 0) breakerCountEl.classList.add('text-gray-300');
+                
+                // 덮어쓰기 UI 업데이트
+                renderOverwriteUI(myOverwritesLeft);
+
+            } else {
+                 // 관전자 또는 게임에 없는 경우 기본값 설정
+                 myNicknameMobile.style.color = '#1a1a1a';
+                 myColorDisplay.textContent = 'SPECTATOR';
+                 overwriteUIContainer.classList.add('hidden');
             }
+            
+            // 게임 중에는 AI 버튼 숨김
+            aiBtn.classList.add('hidden');
+            start2pBtn.classList.add('hidden');
+            
+            // Return to Lobby 버튼 상태 관리
+            if (gameData.status === 'finished') {
+                if (!document.getElementById('message-modal').classList.contains('hidden')) {
+                     returnToLobbyBtn.classList.add('hidden');
+                } else {
+                     returnToLobbyBtn.classList.remove('hidden');
+                }
+            } else {
+                returnToLobbyBtn.classList.add('hidden');
+            }
+
+
+            // Game End Logic (Deferred if animating)
+            if (gameData.status === 'finished') {
+                if (localTimerInterval) clearInterval(localTimerInterval);
+                updateTimerDisplay("0");
+                
+                if (gameData.turn > lastProcessedTurn) {
+                    // Game ended on the last turn, must wait for animation
+                    pendingGameEndData = gameData;
+                    // Animation logic below will handle the rest
+                } else if (!isAnimating) {
+                    // Game finished and no animation pending (e.g., received finished state late)
+                    showWinner(gameData.players);
+                }
+            }
+
 
             // Animation Processing Logic
             if (gameData.turn > lastProcessedTurn) {
@@ -642,10 +862,6 @@
 
             if (gameData.status === 'playing') {
                 runClientTimer(gameData.turnDeadline, gameData);
-            } else if (gameData.status === 'finished') {
-                if (localTimerInterval) clearInterval(localTimerInterval);
-                updateTimerDisplay("0");
-                showWinner(gameData.players);
             }
         }
 
@@ -654,6 +870,14 @@
                 isAnimating = false;
                 currentBoardState = pendingBoardState;
                 renderBoard(currentBoardState, gameData);
+                
+                // 팝업 지연 로직 (애니메이션이 없는 경우)
+                if (pendingGameEndData) {
+                    setTimeout(() => {
+                        showWinner(pendingGameEndData.players);
+                        pendingGameEndData = null;
+                    }, 1000); // 1초 지연
+                }
                 return;
             }
             
@@ -664,13 +888,9 @@
                 const cellIdx = (ev.r * BOARD_SIZE) + ev.c;
                 
                 // Determine step duration based on event type
-                // Success: 1s, Flip: 0.5s, Conflict: Total 2s (dynamic per color)
                 let duration = 1000;
                 if(ev.type === 'flip') duration = 500;
                 else if (ev.type === 'conflict') {
-                    // Calculate dynamic duration based on conflicting colors (e.g., 2 colors = 2s paint + 1s vanish? No, user said 1s paint each)
-                    // Wait, user said "each color painted 1s, then vanish". 
-                    // Let's implement that logic inside the callback.
                     duration = (ev.colors.length * 1000) + 1000; // Paint time + 1s vanish
                 }
 
@@ -679,28 +899,30 @@
                     if (cells[cellIdx]) {
                         const cell = cells[cellIdx];
                         
+                        // 애니메이션 실행 전 애니메이션 초기화 (안정성)
+                        cell.style.animation = 'none';
+                        cell.offsetHeight; // force reflow
+                        cell.style.animation = null; 
+
                         if (ev.type === 'conflict') {
                             if(window.SoundManager) window.SoundManager.playConflict();
-                            // Play Conflict Sequence: Paint each color -> Vanish
                             
-                            // SORT colors: Red -> Yellow -> Blue
                             const sortOrder = ['R', 'Y', 'B'];
                             const colors = (ev.colors || []).sort((a, b) => sortOrder.indexOf(a) - sortOrder.indexOf(b));
                             
                             // 1. Paint sequence
                             colors.forEach((cCode, i) => {
                                 setTimeout(() => {
-                                    if(window.SoundManager) window.SoundManager.playGlass(); // Ting for each claim attempt
+                                    if(window.SoundManager) window.SoundManager.playGlass(); 
                                     cell.classList.remove('bg-white', 'bg-player-red', 'bg-player-yellow', 'bg-player-blue');
                                     cell.classList.add(COLOR_MAP[cCode].code);
-                                    cell.style.animation = 'shine-pulse 1s forwards'; // Reuse shine
+                                    cell.style.animation = 'shine-pulse 1s forwards'; 
                                 }, i * 1000);
                             });
 
                             // 2. Vanish
                             setTimeout(() => {
                                 cell.style.animation = 'vanish-anim 1s forwards';
-                                // After vanish, it's effectively empty
                             }, colors.length * 1000);
 
                         } else if (ev.type === 'success') {
@@ -720,10 +942,19 @@
                 accumulatedDelay += duration;
             });
 
+            // 모든 애니메이션 완료 후 실행
             setTimeout(() => {
                 isAnimating = false;
                 currentBoardState = pendingBoardState;
                 renderBoard(currentBoardState, gameData);
+
+                // 팝업 지연 로직 (애니메이션이 있는 경우)
+                if (pendingGameEndData) {
+                    setTimeout(() => {
+                        showWinner(pendingGameEndData.players);
+                        pendingGameEndData = null;
+                    }, 1000); // 1초 지연
+                }
             }, accumulatedDelay);
         }
 
@@ -739,19 +970,20 @@
             }
 
             timerDisplay.textContent = displayText;
-            timerDisplayMobile.textContent = displayText;
+            // 모바일 타이머 표시 업데이트
+            document.getElementById('timer-display-mobile').textContent = displayText;
             
             if(displayText === "0") {
                  const cls = "font-mono font-bold leading-none text-gray-300";
                  timerDisplay.className = "text-5xl " + cls;
-                 timerDisplayMobile.className = "text-4xl " + cls;
+                 document.getElementById('timer-display-mobile').className = "text-4xl " + cls;
             } else {
                 const val = parseInt(displayText);
                 let colorClass = "text-black";
                 if(val <= 2) colorClass = "text-red-600";
                 const cls = `font-mono font-bold leading-none ${colorClass}`;
                  timerDisplay.className = "text-5xl " + cls;
-                 timerDisplayMobile.className = "text-4xl " + cls;
+                 document.getElementById('timer-display-mobile').className = "text-4xl " + cls;
             }
         }
 
@@ -768,7 +1000,7 @@
                 const diff = deadline - now;
                 const secondsLeft = Math.ceil(diff / 1000);
                 
-                // Allow display to show up to the full duration (removed Math.min(5, ...))
+                // Allow display to show up to the full duration
                 const displaySeconds = Math.max(0, secondsLeft - 1);
                 
                 if (secondsLeft > 0) {
@@ -795,6 +1027,7 @@
                 const p = players[pid];
                 if (p.isAI) {
                     const aiMove = getRandomMove(board);
+                    // AI Move is always non-overwrite
                     if (aiMove) moves.push({ id: pid, color: p.color, r: aiMove.r, c: aiMove.c, isOverwrite: false });
                 } else if (p.lastMove) {
                     moves.push({ id: pid, color: p.color, r: p.lastMove.r, c: p.lastMove.c, isOverwrite: p.lastMove.isOverwrite });
@@ -810,28 +1043,29 @@
             });
             
             const roundEvents = [];
-            const posCounts = {}; 
-            
-            // Process Conflicts and Calculate Total Animation Time
             let totalAnimTime = 0;
 
             for (const key in movesAtPos) {
                 const cellMoves = movesAtPos[key];
                 const [r, c] = key.split(',').map(Number);
-                posCounts[key] = cellMoves.length;
 
                 if (cellMoves.length > 1) {
                     // Collision Detected
                     const colors = cellMoves.map(m => m.color);
                     roundEvents.push({ r, c, type: 'conflict', colors: colors });
-                    // Duration: (colors.length * 1000) + 1000
                     totalAnimTime += (colors.length * 1000) + 1000;
+                    board[r][c] = ''; 
                 }
             }
 
+            const overwriteConsumers = new Set();
+            
+            // Only process moves that didn't conflict and meet placement rules
             const validMoves = moves.filter(m => {
-                if (posCounts[`${m.r},${m.c}`] > 1) return false;
+                if (movesAtPos[`${m.r},${m.c}`].length > 1) return false; // Conflict already handled
+                
                 const currentOwner = board[m.r][m.c];
+                
                 if (m.isOverwrite) {
                     if (currentOwner === '' || currentOwner === m.color) return false; 
                     if (players[m.id].overwrites <= 0) return false; 
@@ -841,7 +1075,6 @@
                 }
             });
 
-            const overwriteConsumers = new Set();
             validMoves.forEach(m => {
                 board[m.r][m.c] = m.color;
                 roundEvents.push({ r: m.r, c: m.c, color: m.color, type: 'success' });
@@ -851,17 +1084,18 @@
                 
                 const flips = applyOthello(board, m.r, m.c, m.color);
                 flips.forEach(f => {
+                    board[f.r][f.c] = m.color; 
                     roundEvents.push({ r: f.r, c: f.c, color: m.color, type: 'flip' });
                     totalAnimTime += 500; // Flip anim
                 });
             });
 
             let newScores = {};
-            let filled = 0;
+            let finalFilled = 0;
             for(let r=0; r<BOARD_SIZE; r++) {
                 for(let c=0; c<BOARD_SIZE; c++) {
                     const cell = board[r][c];
-                    if(cell) { newScores[cell] = (newScores[cell] || 0) + 1; filled++; }
+                    if(cell) { newScores[cell] = (newScores[cell] || 0) + 1; finalFilled++; }
                 }
             }
 
@@ -874,10 +1108,11 @@
                 };
             }
 
-            const isEnd = filled >= (BOARD_SIZE * BOARD_SIZE) - 1;
+            // 종료 조건: 빈칸이 1개 이하일 때 종료 (25 - 1 = 24개 이상 채워졌을 때)
+            const totalCells = BOARD_SIZE * BOARD_SIZE;
+            const isEnd = finalFilled >= (totalCells - 1); 
             
             // Add Animation Duration to Deadline
-            // Base Buffer (1000) + Total Anim Time + Safety Margin (500)
             const nextDeadline = Date.now() + TURN_DURATION_MS + NETWORK_BUFFER_MS + totalAnimTime + 500;
 
             await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'games', gameId), {
@@ -892,6 +1127,7 @@
 
         window.handleCellClick = async (r, c) => {
             if (!gameId || !myColor || isResolving || isAnimating) return;
+            if(window.SoundManager) window.SoundManager.resetActivityTimer();
 
             const cellColor = currentBoardState[r][c];
             let isOverwrite = false;
@@ -900,6 +1136,7 @@
                 if (myOverwritesLeft <= 0) return; 
                 isOverwrite = true;
             }
+            
             selectedCell = { r, c, isOverwrite };
             renderBoard(currentBoardState, { status: 'playing' }); 
             try {
@@ -918,9 +1155,23 @@
             cells.forEach(el => el.remove());
             const waitingScreen = boardElement.querySelector('.col-span-5');
             if(waitingScreen) {
+                // 게임이 시작되었으면, 대기 화면 숨김
                 if(gameData.status === 'playing') waitingScreen.classList.add('hidden');
                 else waitingScreen.classList.remove('hidden');
             }
+            
+            // Return to Lobby 버튼 상태 관리
+            if (gameData.status === 'finished') {
+                if (!document.getElementById('message-modal').classList.contains('hidden')) {
+                     returnToLobbyBtn.classList.add('hidden');
+                } else {
+                     returnToLobbyBtn.classList.remove('hidden');
+                }
+            } else {
+                returnToLobbyBtn.classList.add('hidden');
+            }
+
+
             const frag = document.createDocumentFragment();
             for (let r = 0; r < BOARD_SIZE; r++) {
                 for (let c = 0; c < BOARD_SIZE; c++) {
@@ -959,12 +1210,27 @@
                 queueListEl.innerHTML = '<p class="text-gray-300 text-xs text-center py-8 uppercase tracking-widest">No players waiting</p>';
                 return;
             }
+            
             docs.forEach(d => {
                 const isMe = d.id === userId;
                 const nick = d.data().nickname || "Unknown";
                 const el = document.createElement('div');
-                el.className = `queue-item p-3 border text-xs flex justify-between items-center ${isMe ? 'bg-black text-white border-black' : 'bg-white text-gray-600 border-gray-100'}`;
-                el.innerHTML = `<span class="font-bold uppercase">${isMe ? 'YOU' : nick}</span><span class="text-[10px] uppercase tracking-widest opacity-70">WAITING</span>`;
+                
+                let bgColor = 'bg-white text-gray-600 border-gray-100';
+                let contentHTML = `<span class="font-bold uppercase">${isMe ? `YOU (${nick})` : nick}</span><span class="text-[10px] uppercase tracking-widest opacity-70">WAITING</span>`;
+
+                if (isMe && myColor) {
+                    const cInfo = COLOR_MAP[myColor];
+                    const baseColor = cInfo.html_color.match(/\((.*?)\)/)[1].split(', ').map(c => parseInt(c));
+                    const rgbaColor = `rgba(${baseColor[0]}, ${baseColor[1]}, ${baseColor[2]}, 0.9)`;
+                    bgColor = `text-white border-black shadow-md`;
+                    el.style.backgroundColor = rgbaColor;
+                } else if (isMe) {
+                    bgColor = 'bg-black text-white border-black';
+                }
+
+                el.className = `queue-item p-3 border text-xs flex justify-between items-center ${bgColor}`;
+                el.innerHTML = contentHTML;
                 queueListEl.appendChild(el);
             });
         }
@@ -990,19 +1256,28 @@
         function applyOthello(board, r, c, color) {
             const dirs = [[-1,0],[1,0],[0,-1],[0,1],[-1,-1],[-1,1],[1,-1],[1,1]];
             let flippedCells = [];
+            
             dirs.forEach(([dr, dc]) => {
                 let nr = r + dr, nc = c + dc, flippable = [];
+                let foundOwnColor = false;
+
                 while(nr>=0 && nr<BOARD_SIZE && nc>=0 && nc<BOARD_SIZE) {
-                    if(board[nr][nc] === '') break;
-                    if(board[nr][nc] === color) {
-                        flippable.forEach(f => {
-                            board[f.r][f.c] = color;
-                            flippedCells.push({r: f.r, c: f.c});
-                        });
-                        break;
+                    const cellColor = board[nr][nc];
+                    
+                    if(cellColor === '') break; 
+                    
+                    if(cellColor === color) {
+                        foundOwnColor = true;
+                        break; 
                     }
+                    
                     flippable.push({r:nr, c:nc});
+
                     nr += dr; nc += dc;
+                }
+
+                if(foundOwnColor) {
+                    flippedCells = flippedCells.concat(flippable);
                 }
             });
             return flippedCells;
@@ -1023,13 +1298,26 @@
              document.getElementById('modal-title').textContent = title;
              document.getElementById('modal-content').textContent = content;
              document.getElementById('message-modal').classList.remove('hidden');
+             
+             // 모달이 뜬 상태에서 로비 버튼 숨김
+             returnToLobbyBtn.classList.add('hidden');
         }
 
-        window.closeModal = () => document.getElementById('message-modal').classList.add('hidden');
+        // X 버튼 클릭 핸들러: 모달 닫고, 게임 오버 상태일 때 로비 버튼 표시
+        window.closeModal = () => {
+             document.getElementById('message-modal').classList.add('hidden');
+             // 게임 오버 상태일 때만 로비 버튼 활성화
+             if (gameId && unsubscribeGame) {
+                 returnToLobbyBtn.classList.remove('hidden');
+             }
+        };
+        
         function resetUI() {
-            joinBtn.disabled = false; joinBtn.textContent = "FIND MATCH";
-            nicknameInput.disabled = false; nicknameSection.classList.remove('hidden');
-            gameButtonsDiv.classList.add('hidden'); aiBtn.classList.add('hidden');
+            // Find Match 버튼 상태 초기화
+            joinBtn.textContent = "Find Match";
+            joinBtn.disabled = true;
+            // 닉네임 입력 가능하도록 복원
+            nicknameInput.disabled = false;
         }
     </script>
 </body>
