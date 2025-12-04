@@ -240,7 +240,7 @@
         window.SoundManager = {
             ctx: null,
             activityTimer: null,
-            INACTIVITY_TIMEOUT_MS: 10000, // 10초로 변경 (수정됨)
+            INACTIVITY_TIMEOUT_MS: 10000, 
 
             init: function() {
                 if (this.ctx) return;
@@ -251,9 +251,21 @@
                 // 활동 감지 타이머 시작
                 this.resetActivityTimer();
 
-                // 감지할 이벤트 목록 추가 (모바일 touchmove 등 포함)
+                // 감지할 이벤트 목록 추가
                 ['mousemove', 'keydown', 'mousedown', 'touchstart', 'touchmove', 'scroll', 'click'].forEach(evt => {
                     document.addEventListener(evt, this.resetActivityTimer.bind(this));
+                });
+
+                // [추가됨] 모바일 화면 꺼짐(백그라운드 진입) 감지 -> 즉시 대기열 이탈
+                document.addEventListener('visibilitychange', async () => {
+                    if (document.visibilityState === 'hidden') {
+                        // 대기열(Queue)에 있고, 아직 게임이 시작되지 않은 상태라면
+                        if (queueDocId && !gameId) {
+                            console.log("Screen off or Background: Leaving queue.");
+                            await leaveQueue(); // 대기열 삭제
+                            resetLocalStateAndUI(); // 초기화면으로 리셋
+                        }
+                    }
                 });
             },
             
@@ -262,11 +274,11 @@
                 clearTimeout(this.activityTimer);
                 
                 this.activityTimer = setTimeout(async () => {
-                    // 조건 수정: queueDocId가 존재해야 함 (대기열에 진입한 상태) & 게임 시작 전(!gameId)
+                    // 대기열에 진입한 상태(queueDocId 존재) & 게임 시작 전(!gameId)
                     if (queueDocId && !gameId) {
                         console.log("Inactivity detected: Silent logout.");
-                        await leaveQueue(); // 대기열 삭제 (비동기)
-                        resetLocalStateAndUI(); // UI 리셋 (팝업 없음)
+                        await leaveQueue(); 
+                        resetLocalStateAndUI(); 
                     }
                 }, this.INACTIVITY_TIMEOUT_MS);
             },
