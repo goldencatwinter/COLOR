@@ -3,10 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>COLOR - Solo Fix</title>
+    <title>COLOR - Final Optimized</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        /* ... (기존 스타일 유지) ... */
         @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700;900&display=swap');
         
         body { 
@@ -119,23 +118,12 @@
 
         .modal-content { animation: popIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
 
-        /* Custom Context Menu */
-        #custom-context-menu {
-            position: fixed;
-            z-index: 100;
-            display: none;
-        }
-
         ::-webkit-scrollbar { width: 4px; }
         ::-webkit-scrollbar-track { background: transparent; }
         ::-webkit-scrollbar-thumb { background: #d4d4d4; }
     </style>
 </head>
 <body class="flex flex-col items-center justify-center min-h-screen p-2 md:p-8" onclick="SoundManager.init()">
-
-    <div id="custom-context-menu" class="bg-red-600 text-white font-black text-xs uppercase tracking-widest py-2 px-4 shadow-xl border border-white cursor-pointer hover:bg-red-700 transition-colors rounded">
-        KICK (LOGOUT)
-    </div>
 
     <div id="game-container" class="w-full max-w-7xl bg-white shadow-2xl flex flex-col lg:flex-row min-h-[700px] border border-gray-300">
         
@@ -445,8 +433,7 @@
         const overwriteUIDisplay = document.getElementById('overwrite-ui-display');
         const overwriteUIContainer = document.getElementById('overwrite-ui-container');
 
-        const contextMenu = document.getElementById('custom-context-menu');
-        let kickTargetId = null;
+        // Removed KICK context menu variables
 
         let currentBoardState = [];
         let selectedCell = null; 
@@ -514,24 +501,9 @@
         }
         window.onload = init;
 
-        window.addEventListener('click', () => {
-             contextMenu.style.display = 'none';
-        });
+        // Removed click event listener for context menu
 
-        contextMenu.addEventListener('click', async () => {
-            if (kickTargetId) {
-                const confirmKick = confirm("Kick this player?");
-                if(confirmKick) {
-                    try {
-                        await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'queue', kickTargetId));
-                        console.log("Kicked:", kickTargetId);
-                    } catch (e) {
-                        console.error("Kick failed:", e);
-                    }
-                }
-            }
-            contextMenu.style.display = 'none';
-        });
+        // Removed contextMenu click event listener
 
         nicknameInput.addEventListener('input', (e) => {
             joinBtn.disabled = e.target.value.trim().length === 0;
@@ -1037,10 +1009,9 @@
                 const totalDiff = deadline - now;
                 const visualDiff = totalDiff - NETWORK_BUFFER_MS;
                 
-                // --- NEW: Commit move logic ---
+                // --- Commit move logic ---
                 // If we are very close to the effective deadline (e.g. 0.5s remaining),
                 // and we haven't sent the move yet, send it now.
-                // visualDiff is roughly how much time the user 'sees' on the clock (in ms).
                 if (visualDiff <= 500 && !isMoveCommitted && selectedCell) {
                     commitCurrentMove();
                 }
@@ -1052,6 +1023,10 @@
                 } else {
                     updateTimerDisplay("0");
                     
+                    // --- OPTIMIZATION FOR COST SAVING ---
+                    // Host triggers turn resolution immediately (0 delay).
+                    // Others trigger it 3 seconds later as a fallback if Host fails.
+                    // This prevents multiple writes per turn, saving money.
                     const isHost = userId === gameData.hostId;
                     const buffer = isHost ? 0 : 3000; 
 
@@ -1300,9 +1275,6 @@
             
             selectedCell = { r, c, isOverwrite };
             renderBoard(currentBoardState, { status: 'playing' }); 
-            
-            // --- UPDATED: removed the immediate updateDoc call ---
-            // The actual move will be sent in runClientTimer when timer is low.
         };
 
         function renderBoard(board, gameData) {
@@ -1374,15 +1346,7 @@
                 el.className = `queue-item p-3 border text-xs flex justify-between items-center ${bgColor}`;
                 el.innerHTML = contentHTML;
 
-                el.addEventListener('contextmenu', (e) => {
-                    e.preventDefault();
-                    if (!isMe) {
-                        kickTargetId = d.id;
-                        contextMenu.style.left = `${e.pageX}px`;
-                        contextMenu.style.top = `${e.pageY}px`;
-                        contextMenu.style.display = 'block';
-                    }
-                });
+                // Removed contextmenu event listener for kick
 
                 queueListEl.appendChild(el);
             });
