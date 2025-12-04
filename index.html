@@ -469,7 +469,7 @@
                 if (user) userId = user.uid;
             });
             // 초기 TIMER 숨기기
-            desktopTimerContainer.classList.add('hidden');
+            // desktopTimerContainer는 이미 hidden md:block 클래스를 가짐
             mobileTimerContainer.classList.add('hidden');
             // 초기 OVERWRITE UI 숨기기
             overwriteUIContainer.classList.add('hidden');
@@ -692,7 +692,7 @@
             queueSection.classList.remove('hidden');
             
             // TIMER 숨기기
-            desktopTimerContainer.classList.add('hidden');
+            // desktopTimerContainer.classList.add('hidden'); // HTML 클래스에 의존
             mobileTimerContainer.classList.add('hidden');
 
             updateTimerDisplay("--");
@@ -740,7 +740,7 @@
             scoresSection.classList.remove('hidden');
             
             // TIMER 표시
-            desktopTimerContainer.classList.remove('hidden');
+            // desktopTimerContainer.classList.remove('hidden'); // 삭제: CSS(hidden md:block)에 의존
             mobileTimerContainer.classList.remove('hidden'); // 모바일 타이머 컨테이너를 보이게 설정
         }
 
@@ -777,7 +777,7 @@
             
             // TIMER 표시 상태 업데이트
             // 데스크톱 (가로 모드)에서는 TIMER만 보이도록 (HTML 클래스 md:block/hidden 유지)
-            desktopTimerContainer.classList.remove('hidden');
+            // desktopTimerContainer.classList.remove('hidden'); // 삭제: CSS(hidden md:block)에 의존
             
             // 모바일 (세로 모드)에서는 TURN TIMER만 보이도록 (HTML 클래스 md:hidden 유지)
             mobileTimerContainer.classList.remove('hidden');
