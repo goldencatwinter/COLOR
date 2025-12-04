@@ -234,7 +234,7 @@
             query, where, getDocs, runTransaction, serverTimestamp, orderBy, limit 
         } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
-        // --- Sound Manager (Web Audio API) ---
+        // --- Sound Manager (Web Audio API) & Inactivity Logic ---
         window.SoundManager = {
             ctx: null,
             init: function() {
@@ -242,9 +242,14 @@
                 const AudioContext = window.AudioContext || window.webkitAudioContext;
                 this.ctx = new AudioContext();
                 this.playAmbient();
+                
+                // 활동 감지 타이머 시작
                 this.resetActivityTimer();
-                document.addEventListener('mousemove', this.resetActivityTimer.bind(this));
-                document.addEventListener('keydown', this.resetActivityTimer.bind(this));
+
+                // 감지할 이벤트 목록 추가 (마우스 이동, 키 입력, 클릭, 터치, 스크롤)
+                ['mousemove', 'keydown', 'mousedown', 'touchstart', 'scroll', 'click'].forEach(evt => {
+                    document.addEventListener(evt, this.resetActivityTimer.bind(this));
+                });
             },
             playAmbient: function() {
                 const t = this.ctx.currentTime;
@@ -350,15 +355,19 @@
                 osc.start();
                 osc.stop(t + 0.05);
             },
+            
             activityTimer: null,
-            INACTIVITY_TIMEOUT_MS: 60000, 
+            INACTIVITY_TIMEOUT_MS: 60000, // 1분 (60,000ms)
 
             resetActivityTimer: function() {
                 clearTimeout(this.activityTimer);
+                
                 this.activityTimer = setTimeout(async () => {
+                    // 조건: 닉네임이 설정되어 있고(매칭 대기 중) & 게임(gameId)은 시작되지 않은 경우
                     if (myNickname && !gameId) {
-                        await leaveQueue();
-                        resetLocalStateAndUI();
+                        console.log("Inactivity detected: Force leaving queue.");
+                        await leaveQueue(); // 대기열에서 제거
+                        resetLocalStateAndUI(); // 초기 화면으로 리셋 (경고창 없음)
                     }
                 }, this.INACTIVITY_TIMEOUT_MS);
             }
