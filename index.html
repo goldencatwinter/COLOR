@@ -240,7 +240,7 @@
         window.SoundManager = {
             ctx: null,
             activityTimer: null,
-            INACTIVITY_TIMEOUT_MS: 60000, // 1분 (60,000ms)
+            INACTIVITY_TIMEOUT_MS: 10000, // 10초로 변경 (수정됨)
 
             init: function() {
                 if (this.ctx) return;
@@ -262,11 +262,11 @@
                 clearTimeout(this.activityTimer);
                 
                 this.activityTimer = setTimeout(async () => {
-                    // 조건: 닉네임이 있고(대기열 진입함) & 게임(gameId)은 아직 안 함
-                    if (myNickname && !gameId) {
+                    // 조건 수정: queueDocId가 존재해야 함 (대기열에 진입한 상태) & 게임 시작 전(!gameId)
+                    if (queueDocId && !gameId) {
                         console.log("Inactivity detected: Silent logout.");
-                        await leaveQueue(); // 대기열에서 제거 (비동기)
-                        resetLocalStateAndUI(); // 조용히 UI 리셋 (팝업 없음)
+                        await leaveQueue(); // 대기열 삭제 (비동기)
+                        resetLocalStateAndUI(); // UI 리셋 (팝업 없음)
                     }
                 }, this.INACTIVITY_TIMEOUT_MS);
             },
