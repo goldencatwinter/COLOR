@@ -32,7 +32,6 @@
             100% { transform: scale(1); opacity: 1; }
         }
 
-        /* Success & Conflict Step: 1s Fill & Shine */
         @keyframes shine-pulse {
             0% { 
                 transform: scale(0.9); 
@@ -51,13 +50,11 @@
             }
         }
 
-        /* Final Vanish for Conflict */
         @keyframes vanish-anim {
             0% { transform: scale(1); opacity: 1; }
             100% { transform: scale(0.5); opacity: 0; }
         }
 
-        /* Flip: 0.5s Rotate */
         @keyframes flip-anim {
             0% { transform: perspective(400px) rotateY(0); }
             50% { transform: perspective(400px) rotateY(90deg); filter: brightness(2); }
@@ -81,7 +78,6 @@
             animation: rainbowCycle 20s ease infinite;
         }
 
-        /* 새로운 오버라이트 박스 스타일 */
         .overwrite-box {
             width: 14px;
             height: 14px;
@@ -168,10 +164,6 @@
                             <button id="modal-play-again" class="w-full bg-black hover:bg-gray-800 text-white border border-white/20 font-black py-4 text-sm tracking-[0.2em] uppercase transition-all hover:scale-105 rounded-lg shadow-xl mb-3">
                                 PLAY AGAIN
                             </button>
-
-                            <button id="modal-return-to-lobby" onclick="location.reload()" class="w-full bg-white/20 hover:bg-white/40 text-white border border-white/50 font-black py-3 text-xs tracking-[0.2em] uppercase transition-all hover:scale-105 rounded-lg shadow-lg hidden">
-                                RETURN TO LOBBY
-                            </button>
                         </div>
                     </div>
 
@@ -206,10 +198,6 @@
                             Start with AI (2P + 1 AI)
                         </button>
                     </div>
-
-                    <button id="return-to-lobby-btn" onclick="location.reload()" class="w-full bg-black text-white hover:bg-gray-800 font-bold py-4 text-sm tracking-widest uppercase transition-colors hidden">
-                        RETURN TO LOBBY
-                    </button>
                 </div>
             </div>
             
@@ -239,12 +227,12 @@
     </div>
 
     <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+        import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
         import { 
             getFirestore, doc, setDoc, updateDoc, deleteDoc, onSnapshot, collection, 
             query, where, getDocs, runTransaction, serverTimestamp, orderBy, limit 
-        } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
         // --- Sound Manager (Web Audio API) ---
         window.SoundManager = {
@@ -369,7 +357,6 @@
                 clearTimeout(this.activityTimer);
                 this.activityTimer = setTimeout(async () => {
                     if (myNickname && !gameId) {
-                        alert("You were automatically logged out due to 1 minute of inactivity.");
                         await leaveQueue();
                         resetLocalStateAndUI();
                     }
@@ -382,8 +369,6 @@
         const TURN_DURATION_MS = 5000; 
         const FIRST_TURN_DURATION_MS = 10000; 
         const NETWORK_BUFFER_MS = 1000;
-        
-        // --- CHANGED: Increase default overwrites to 3 ---
         const MAX_OVERWRITES = 3; 
         
         const COLORS = ['R', 'Y', 'B']; 
@@ -446,7 +431,6 @@
 
         const overwriteUIDisplay = document.getElementById('overwrite-ui-display');
         const overwriteUIContainer = document.getElementById('overwrite-ui-container');
-        const returnToLobbyBtn = document.getElementById('return-to-lobby-btn');
 
         let currentBoardState = [];
         let selectedCell = null; 
@@ -458,14 +442,25 @@
         let lastGameMode = null; 
 
         async function init() {
+            // Initialize with stable version (10.12.2)
             app = initializeApp(firebaseConfig);
             db = getFirestore(app);
             auth = getAuth(app);
-            await signInAnonymously(auth);
             
+            try {
+                const credential = await signInAnonymously(auth);
+                // Immediately set userId to avoid race condition
+                userId = credential.user.uid; 
+                console.log("Logged in as:", userId);
+            } catch (error) {
+                console.error("Auth failed:", error);
+            }
+            
+            // Backup listener
             onAuthStateChanged(auth, (user) => {
-                if (user) userId = user.uid;
+                if (user && !userId) userId = user.uid;
             });
+
             mobileTimerContainer.classList.add('hidden');
             overwriteUIContainer.classList.add('hidden');
         }
@@ -473,13 +468,23 @@
 
         // --- 닉네임 입력 및 Join 로직 ---
         nicknameInput.addEventListener('input', (e) => {
+            // Ensure button enables when text exists
             joinBtn.disabled = e.target.value.trim().length === 0;
             if(window.SoundManager) window.SoundManager.resetActivityTimer();
         });
 
         async function performJoinQueue() {
-            if (!userId) return;
-             if(window.SoundManager) window.SoundManager.init();
+            if (!userId) {
+                // If userId is missing, try to fetch current user
+                if (auth.currentUser) {
+                    userId = auth.currentUser.uid;
+                } else {
+                    alert("Network initializing... Please try again in a moment.");
+                    return;
+                }
+            }
+            
+            if(window.SoundManager) window.SoundManager.init();
             if(window.SoundManager) window.SoundManager.resetActivityTimer();
 
             nicknameSection.classList.add('hidden'); 
@@ -506,7 +511,7 @@
                 watchQueueList(); 
             } catch (e) {
                 console.error(e);
-                alert("Connection Error");
+                alert("Connection Error. Please refresh.");
                 resetUI();
             }
         }
@@ -585,7 +590,6 @@
                     const colorIndex = usersDocs.length + i;
                     const aiId = `AI_CPU_${i+1}`;
                     playersData[aiId] = { 
-                        // --- CHANGED: AI overwrites set to MAX_OVERWRITES ---
                         nickname: "AI BOT", color: COLORS[colorIndex], isAI: true, score: 0, overwrites: MAX_OVERWRITES, lastMove: null 
                     };
                     playerOrder.push(aiId);
@@ -624,8 +628,8 @@
             const initialBoard = Array(BOARD_SIZE).fill(0).map(() => Array(BOARD_SIZE).fill(''));
             const playersData = {
                 [userId]: { nickname: myNickname, color: 'R', isAI: false, score: 0, overwrites: MAX_OVERWRITES, lastMove: null },
-                'AI_Y': { nickname: "AI YELLOW", color: 'Y', isAI: true, score: 0, overwrites: MAX_OVERWRITES, lastMove: null }, // Changed 0 to MAX
-                'AI_B': { nickname: "AI BLUE", color: 'B', isAI: true, score: 0, overwrites: MAX_OVERWRITES, lastMove: null }  // Changed 0 to MAX
+                'AI_Y': { nickname: "AI YELLOW", color: 'Y', isAI: true, score: 0, overwrites: MAX_OVERWRITES, lastMove: null }, 
+                'AI_B': { nickname: "AI BLUE", color: 'B', isAI: true, score: 0, overwrites: MAX_OVERWRITES, lastMove: null } 
             };
             const deadLine = Date.now() + FIRST_TURN_DURATION_MS + NETWORK_BUFFER_MS;
             await setDoc(newGameRef, {
@@ -685,8 +689,6 @@
             overwriteUIDisplay.innerHTML = '';
             overwriteUIContainer.classList.add('hidden');
             
-            returnToLobbyBtn.classList.add('hidden');
-
             scoresSection.classList.add('hidden');
             queueSection.classList.remove('hidden');
             
@@ -709,10 +711,6 @@
                             
                             <button id="modal-play-again" class="w-full bg-black hover:bg-gray-800 text-white border border-white/20 font-black py-4 text-sm tracking-[0.2em] uppercase transition-all hover:scale-105 rounded-lg shadow-xl mb-3">
                                 PLAY AGAIN
-                            </button>
-
-                            <button id="modal-return-to-lobby" onclick="location.reload()" class="w-full bg-white/20 hover:bg-white/40 text-white border border-white/50 font-black py-3 text-xs tracking-[0.2em] uppercase transition-all hover:scale-105 rounded-lg shadow-lg hidden">
-                                RETURN TO LOBBY
                             </button>
                         </div>
                     </div>`;
@@ -788,16 +786,6 @@
             aiBtn.classList.add('hidden');
             start2pBtn.classList.add('hidden');
             
-            if (gameData.status === 'finished') {
-                if (!document.getElementById('message-modal').classList.contains('hidden')) {
-                     returnToLobbyBtn.classList.add('hidden');
-                } else {
-                     returnToLobbyBtn.classList.remove('hidden');
-                }
-            } else {
-                returnToLobbyBtn.classList.add('hidden');
-            }
-
             if (gameData.status === 'finished') {
                 if (localTimerInterval) clearInterval(localTimerInterval);
                 updateTimerDisplay("0");
@@ -964,7 +952,7 @@
             localTimerInterval = setInterval(updateTimer, 100);
         }
 
-        // --- NEW STRATEGIC AI LOGIC ---
+        // --- NEW STRATEGIC AI LOGIC (CONSERVATIVE) ---
         function getStrategicAIMove(board, playerObj, color) {
             let possibleMoves = [];
             const emptyCells = [];
@@ -978,45 +966,58 @@
                 }
             }
 
-            // 2. Evaluate Normal Moves
+            // 2. Evaluate Normal Moves (Preferred with Bonus)
             emptyCells.forEach(cell => {
                 const flips = applyOthello(board, cell.r, cell.c, color);
                 possibleMoves.push({
                     r: cell.r, c: cell.c, isOverwrite: false,
                     flips: flips.length,
-                    score: flips.length * 10 // Base score for flipping
+                    score: (flips.length * 10) + 20 // Base score bonus for Normal Move to prefer saving breakers
                 });
             });
 
             // 3. Evaluate Overwrite Moves (only if charges left)
             if (playerObj.overwrites > 0) {
-                // Determine urgency based on remaining empty cells
-                // Fewer empty cells = higher urgency to use overwrites
-                const urgencyBonus = Math.max(0, (25 - emptyCells.length) * 2); 
-
                 enemyCells.forEach(cell => {
                     const flips = applyOthello(board, cell.r, cell.c, color);
-                    // Base score for flips + Bonus for using an overwrite strategically + Urgency
-                    // We add 5 base points to encourage using it if it flips something
-                    let score = (flips.length * 12) + 5 + urgencyBonus; 
                     
-                    possibleMoves.push({
-                        r: cell.r, c: cell.c, isOverwrite: true,
-                        flips: flips.length,
-                        score: score
-                    });
+                    // --- STRATEGY: CONSERVATION ---
+                    let allowed = false;
+                    
+                    // Late Game (Last ~8 cells): Go crazy to use them up
+                    if (emptyCells.length <= 8) {
+                        allowed = true;
+                    } 
+                    // Mid Game (9-16 cells): Only if good value (flip 2+)
+                    else if (emptyCells.length <= 16) {
+                        if (flips.length >= 2) allowed = true;
+                    }
+                    // Early Game (17+ cells): Only if huge value (flip 3+)
+                    else {
+                        if (flips.length >= 3) allowed = true;
+                    }
+
+                    if (allowed) {
+                        // Increasing urgency as space runs out
+                        const urgencyBonus = (25 - emptyCells.length) * 1.5; 
+                        let score = (flips.length * 12) + urgencyBonus; 
+                        
+                        possibleMoves.push({
+                            r: cell.r, c: cell.c, isOverwrite: true,
+                            flips: flips.length,
+                            score: score
+                        });
+                    }
                 });
             }
 
-            // 4. Sort by Score descending
+            // 4. Sort and Pick
             possibleMoves.sort((a, b) => b.score - a.score);
-
-            // 5. Pick best, or random if no moves (unlikely unless full)
+            
             if (possibleMoves.length > 0) {
-                // Add slight randomness to top tied moves so it's not 100% predictable
-                const bestScore = possibleMoves[0].score;
-                const topMoves = possibleMoves.filter(m => m.score >= bestScore - 5);
-                return topMoves[Math.floor(Math.random() * topMoves.length)];
+                 const bestScore = possibleMoves[0].score;
+                 const topMoves = possibleMoves.filter(m => m.score >= bestScore - 5);
+                 return topMoves[Math.floor(Math.random() * topMoves.length)];
             }
             
             return null;
@@ -1165,16 +1166,6 @@
                 else waitingScreen.classList.remove('hidden');
             }
             
-            if (gameData.status === 'finished') {
-                if (!document.getElementById('message-modal').classList.contains('hidden')) {
-                     returnToLobbyBtn.classList.add('hidden');
-                } else {
-                     returnToLobbyBtn.classList.remove('hidden');
-                }
-            } else {
-                returnToLobbyBtn.classList.add('hidden');
-            }
-
             const frag = document.createDocumentFragment();
             for (let r = 0; r < BOARD_SIZE; r++) {
                 for (let c = 0; c < BOARD_SIZE; c++) {
@@ -1251,7 +1242,7 @@
                 }
                 const li = document.createElement('li');
                 li.className = "flex justify-between items-center p-3 bg-white border border-gray-100 shadow-sm";
-                li.innerHTML = `<div class="flex items-center gap-3"><div class="w-4 h-4 rounded-full ${COLOR_MAP[colorCode].code}"></div><div class="flex flex-col"><span class="text-sm font-bold uppercase tracking-wider ${isMe ? 'text-black' : 'text-gray-600'}">${label}</span>${playerEntry && !playerEntry[1].isAI ? `<span class="text-[10px] text-gray-400">BREAKERS: ${overwrites}</span>` : ''}</div></div><span class="font-mono font-black text-xl">${score}</span>`;
+                li.innerHTML = `<div class="flex items-center gap-3"><div class="w-4 h-4 rounded-full ${COLOR_MAP[colorCode].code}"></div><div class="flex flex-col"><span class="text-sm font-bold uppercase tracking-wider ${isMe ? 'text-black' : 'text-gray-600'}">${label}</span>${playerEntry ? `<span class="text-[10px] text-gray-400">BREAKERS: ${overwrites}</span>` : ''}</div></div><span class="font-mono font-black text-xl">${score}</span>`;
                 scoreList.appendChild(li);
             });
         }
@@ -1294,14 +1285,10 @@
              document.getElementById('modal-title').textContent = title;
              document.getElementById('modal-content').textContent = content;
              document.getElementById('message-modal').classList.remove('hidden');
-             returnToLobbyBtn.classList.add('hidden');
         }
 
         window.closeModal = () => {
              document.getElementById('message-modal').classList.add('hidden');
-             if (gameId && unsubscribeGame) {
-                 returnToLobbyBtn.classList.remove('hidden');
-             }
         };
 
         // --- PLAY AGAIN LISTENER SETUP ---
@@ -1309,31 +1296,21 @@
             const btn = document.getElementById('modal-play-again');
             if(btn) {
                 btn.onclick = async () => {
-                     // 1. Hide modal
                      document.getElementById('message-modal').classList.add('hidden');
-                     
-                     // 2. Clear current game listeners
                      if(unsubscribeGame) unsubscribeGame();
                      if(localTimerInterval) clearInterval(localTimerInterval);
+                     boardElement.innerHTML = ''; 
+                     resetLocalStateAndUI();
                      
-                     // 3. Clear UI slightly
-                     boardElement.innerHTML = ''; // Force clear board
-                     resetLocalStateAndUI(); // Resets everything including queue subscription
-                     
-                     // 4. Determine action based on last mode
                      if (lastGameMode === 'AI') {
-                        // Restart Solo AI
                         await startSoloAiGame();
                      } else {
-                        // Restart Queue (PVP or PVP+AI)
-                        // Pre-fill nickname and start searching
                         nicknameInput.value = myNickname;
                         performJoinQueue();
                      }
                 };
             }
         }
-        // Initial setup
         setupPlayAgainListener();
 
         function resetUI() {
