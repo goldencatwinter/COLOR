@@ -165,6 +165,10 @@
                             <h3 id="modal-title" class="text-2xl font-black uppercase mb-3 tracking-tighter text-white drop-shadow-md">TITLE</h3>
                             <p id="modal-content" class="text-white mb-6 font-bold whitespace-pre-line leading-relaxed text-sm drop-shadow-sm">Content</p>
                             
+                            <button id="modal-play-again" class="w-full bg-black hover:bg-gray-800 text-white border border-white/20 font-black py-4 text-sm tracking-[0.2em] uppercase transition-all hover:scale-105 rounded-lg shadow-xl mb-3">
+                                PLAY AGAIN
+                            </button>
+
                             <button id="modal-return-to-lobby" onclick="location.reload()" class="w-full bg-white/20 hover:bg-white/40 text-white border border-white/50 font-black py-3 text-xs tracking-[0.2em] uppercase transition-all hover:scale-105 rounded-lg shadow-lg hidden">
                                 RETURN TO LOBBY
                             </button>
@@ -259,7 +263,6 @@
                 const gain = this.ctx.createGain();
                 gain.connect(this.ctx.destination);
                 
-                // Brighter Major 7 Ambient (C4, E4, G4, B4)
                 const freqs = [261.63, 329.63, 392.00, 493.88]; 
                 
                 freqs.forEach((f, i) => {
@@ -268,9 +271,8 @@
                     osc.frequency.value = f;
                     
                     const oscGain = this.ctx.createGain();
-                    oscGain.gain.value = 0.03; // Low volume for background
+                    oscGain.gain.value = 0.03; 
                     
-                    // Simple LFO for movement
                     const lfo = this.ctx.createOscillator();
                     lfo.frequency.value = 0.1 + (i * 0.05);
                     const lfoGain = this.ctx.createGain();
@@ -287,11 +289,10 @@
                 gain.gain.setValueAtTime(0, t);
                 gain.gain.linearRampToValueAtTime(0.5, t + 5); 
             },
-            playGlass: function() { // New Glass Ting Sound
+            playGlass: function() { 
                 if (!this.ctx) return;
                 const t = this.ctx.currentTime;
                 
-                // Primary Tone
                 const osc = this.ctx.createOscillator();
                 const gain = this.ctx.createGain();
                 osc.type = 'sine';
@@ -307,7 +308,6 @@
                 osc.start(t);
                 osc.stop(t + 1.5);
                 
-                // High harmonic ring
                 const osc2 = this.ctx.createOscillator();
                 const gain2 = this.ctx.createGain();
                 osc2.type = 'triangle';
@@ -322,7 +322,7 @@
                 osc2.start(t);
                 osc2.stop(t + 1.0);
             },
-            playConflict: function() { // Conflict Buzz
+            playConflict: function() { 
                 if (!this.ctx) return;
                 const t = this.ctx.currentTime;
                 const osc = this.ctx.createOscillator();
@@ -363,12 +363,11 @@
                 osc.stop(t + 0.05);
             },
             activityTimer: null,
-            INACTIVITY_TIMEOUT_MS: 60000, // 60 seconds
+            INACTIVITY_TIMEOUT_MS: 60000, 
 
             resetActivityTimer: function() {
                 clearTimeout(this.activityTimer);
                 this.activityTimer = setTimeout(async () => {
-                    // Only log out if we are not in a game, but have a nickname/queue ticket
                     if (myNickname && !gameId) {
                         alert("You were automatically logged out due to 1 minute of inactivity.");
                         await leaveQueue();
@@ -380,10 +379,12 @@
 
         // --- Config ---
         const BOARD_SIZE = 5;
-        const TURN_DURATION_MS = 5000; // Regular turn
-        const FIRST_TURN_DURATION_MS = 10000; // First turn only
+        const TURN_DURATION_MS = 5000; 
+        const FIRST_TURN_DURATION_MS = 10000; 
         const NETWORK_BUFFER_MS = 1000;
-        const MAX_OVERWRITES = 2; 
+        
+        // --- CHANGED: Increase default overwrites to 3 ---
+        const MAX_OVERWRITES = 3; 
         
         const COLORS = ['R', 'Y', 'B']; 
         
@@ -411,10 +412,10 @@
         let myColor = null;
         let myOverwritesLeft = MAX_OVERWRITES;
         let currentQueueDocs = []; 
-        let lastProcessedTurn = 0; // Track animations
-        let isAnimating = false; // Flag to block renders during anim
-        let pendingBoardState = null; // Buffer new board during anim
-        let pendingGameEndData = null; // Buffer game end data during final animation
+        let lastProcessedTurn = 0; 
+        let isAnimating = false; 
+        let pendingBoardState = null; 
+        let pendingGameEndData = null; 
         
         let unsubscribeQueue = null;
         let unsubscribeGame = null;
@@ -439,18 +440,12 @@
         const desktopTimerContainer = document.getElementById('desktop-timer-container');
         const mobileTimerContainer = document.getElementById('mobile-timer-container');
         
-        // 닉네임 표시를 위한 숨겨진 요소들
         const myNicknameDisplay = document.getElementById('my-nickname-display');
         const myColorDisplay = document.getElementById('my-color-display'); 
-        
-        // 모바일 헤더 요소들
         const myNicknameMobile = document.getElementById('my-nickname-mobile'); 
 
-        // 덮어쓰기 상태 UI 요소
         const overwriteUIDisplay = document.getElementById('overwrite-ui-display');
-        // 덮어쓰기 UI 컨테이너
         const overwriteUIContainer = document.getElementById('overwrite-ui-container');
-        // 게임 오버 시 리턴 투 로비 버튼
         const returnToLobbyBtn = document.getElementById('return-to-lobby-btn');
 
         let currentBoardState = [];
@@ -458,6 +453,9 @@
         let isResolving = false;
         let localTimerInterval = null;
         let lastTimerValue = ""; 
+
+        // Track last game mode for Restart logic ('AI' or 'PVP')
+        let lastGameMode = null; 
 
         async function init() {
             app = initializeApp(firebaseConfig);
@@ -468,35 +466,25 @@
             onAuthStateChanged(auth, (user) => {
                 if (user) userId = user.uid;
             });
-            // 초기 TIMER 숨기기
-            // desktopTimerContainer는 이미 hidden md:block 클래스를 가짐
             mobileTimerContainer.classList.add('hidden');
-            // 초기 OVERWRITE UI 숨기기
             overwriteUIContainer.classList.add('hidden');
         }
         window.onload = init;
 
         // --- 닉네임 입력 및 Join 로직 ---
         nicknameInput.addEventListener('input', (e) => {
-            // 입력 내용이 있으면 disabled 해제, 없으면 disabled 유지
             joinBtn.disabled = e.target.value.trim().length === 0;
             if(window.SoundManager) window.SoundManager.resetActivityTimer();
         });
 
-        joinBtn.addEventListener('click', async () => {
+        async function performJoinQueue() {
             if (!userId) return;
-            const val = nicknameInput.value.trim();
-            if(!val) return;
-            myNickname = val.toUpperCase().slice(0, 10);
-            
-            if(window.SoundManager) window.SoundManager.init();
+             if(window.SoundManager) window.SoundManager.init();
             if(window.SoundManager) window.SoundManager.resetActivityTimer();
 
-            // UI 업데이트: 닉네임 입력 섹션 숨기기, 게임 버튼 표시
             nicknameSection.classList.add('hidden'); 
             gameButtonsDiv.classList.remove('hidden'); 
             
-            // 닉네임 반영 (숨겨진 요소와 모바일 헤더)
             myNicknameDisplay.textContent = myNickname;
             myNicknameMobile.textContent = myNickname; 
 
@@ -521,15 +509,23 @@
                 alert("Connection Error");
                 resetUI();
             }
-        });
-        // --- 닉네임 입력 및 Join 로직 끝 ---
+        }
 
+        joinBtn.addEventListener('click', async () => {
+            const val = nicknameInput.value.trim();
+            if(!val) return;
+            myNickname = val.toUpperCase().slice(0, 10);
+            await performJoinQueue();
+        });
 
         function watchMyTicket(docRef) {
             unsubscribeMyTicket = onSnapshot(docRef, (docSnap) => {
                 if (!docSnap.exists()) return;
                 const data = docSnap.data();
-                if (data.matchId) enterGame(data.matchId);
+                if (data.matchId) {
+                    lastGameMode = 'PVP'; // Match found from queue
+                    enterGame(data.matchId);
+                }
             });
         }
 
@@ -544,7 +540,6 @@
                     const top3 = docs.slice(0, 3);
                     if (top3[2].id === userId) createMatchedGame(top3);
                 }
-                // AI 버튼 표시/숨김 로직
                 if (queueDocId && docs.length >= 1) { 
                     aiBtn.classList.remove('hidden');
                 } else {
@@ -590,14 +585,17 @@
                     const colorIndex = usersDocs.length + i;
                     const aiId = `AI_CPU_${i+1}`;
                     playersData[aiId] = { 
-                        nickname: "AI BOT", color: COLORS[colorIndex], isAI: true, score: 0, overwrites: 0, lastMove: null 
+                        // --- CHANGED: AI overwrites set to MAX_OVERWRITES ---
+                        nickname: "AI BOT", color: COLORS[colorIndex], isAI: true, score: 0, overwrites: MAX_OVERWRITES, lastMove: null 
                     };
                     playerOrder.push(aiId);
                 }
+                lastGameMode = 'PVP_AI'; // Mixed mode
+            } else {
+                lastGameMode = 'PVP';
             }
 
             const initialBoard = Array(BOARD_SIZE).fill(0).map(() => Array(BOARD_SIZE).fill(''));
-            // Use FIRST_TURN_DURATION_MS for the first turn
             const deadLine = Date.now() + FIRST_TURN_DURATION_MS + NETWORK_BUFFER_MS;
 
             await runTransaction(db, async (transaction) => {
@@ -605,7 +603,7 @@
                     status: 'playing', turn: 1, turnDeadline: deadLine,
                     board: JSON.stringify(initialBoard), players: playersData,
                     playerOrder: playerOrder, hostId: userId, createdAt: serverTimestamp(),
-                    lastRoundEvents: "[]" // Init events
+                    lastRoundEvents: "[]"
                 });
                 for (const d of usersDocs) {
                     const qRef = doc(db, 'artifacts', appId, 'public', 'data', 'queue', d.id);
@@ -614,19 +612,21 @@
             });
         }
 
-        aiBtn.addEventListener('click', async () => {
+        async function startSoloAiGame() {
             if(window.SoundManager) window.SoundManager.init();
             if(window.SoundManager) window.SoundManager.resetActivityTimer(); 
-            if (!queueDocId) return;
-            await leaveQueue();
+            // If we are in queue, leave it first
+            if (queueDocId) await leaveQueue();
+
+            lastGameMode = 'AI';
+            
             const newGameRef = doc(collection(db, 'artifacts', appId, 'public', 'data', 'games'));
             const initialBoard = Array(BOARD_SIZE).fill(0).map(() => Array(BOARD_SIZE).fill(''));
             const playersData = {
                 [userId]: { nickname: myNickname, color: 'R', isAI: false, score: 0, overwrites: MAX_OVERWRITES, lastMove: null },
-                'AI_Y': { nickname: "AI YELLOW", color: 'Y', isAI: true, score: 0, overwrites: 0, lastMove: null }, 
-                'AI_B': { nickname: "AI BLUE", color: 'B', isAI: true, score: 0, overwrites: 0, lastMove: null } 
+                'AI_Y': { nickname: "AI YELLOW", color: 'Y', isAI: true, score: 0, overwrites: MAX_OVERWRITES, lastMove: null }, // Changed 0 to MAX
+                'AI_B': { nickname: "AI BLUE", color: 'B', isAI: true, score: 0, overwrites: MAX_OVERWRITES, lastMove: null }  // Changed 0 to MAX
             };
-            // Use FIRST_TURN_DURATION_MS for the first turn
             const deadLine = Date.now() + FIRST_TURN_DURATION_MS + NETWORK_BUFFER_MS;
             await setDoc(newGameRef, {
                 status: 'playing', turn: 1, turnDeadline: deadLine,
@@ -635,6 +635,10 @@
                 lastRoundEvents: "[]"
             });
             enterGame(newGameRef.id);
+        }
+
+        aiBtn.addEventListener('click', async () => {
+             await startSoloAiGame();
         });
 
         async function leaveQueue() {
@@ -652,7 +656,7 @@
             if (unsubscribeGame) { unsubscribeGame(); unsubscribeGame = null; }
             if (unsubscribeMyTicket) { unsubscribeMyTicket(); unsubscribeMyTicket = null; }
 
-            myNickname = "";
+            // NOTE: We keep myNickname and userId for quick restart
             queueDocId = null;
             gameId = null;
             myColor = null;
@@ -660,39 +664,32 @@
             lastProcessedTurn = 0;
             isAnimating = false;
             pendingBoardState = null;
-            pendingGameEndData = null; // Clear pending game end data
+            pendingGameEndData = null;
             selectedCell = null;
             isResolving = false;
             lastTimerValue = "";
             
-            // UI 초기화 및 닉네임 입력 필드 복원
             nicknameSection.classList.remove('hidden');
             joinBtn.textContent = "Find Match";
             joinBtn.disabled = true;
             nicknameInput.disabled = false;
             nicknameInput.value = "";
-            gameButtonsDiv.classList.add('hidden'); // AI 버튼 숨김
+            gameButtonsDiv.classList.add('hidden');
 
-            // 닉네임 색상 초기화
             myNicknameDisplay.textContent = ''; 
             myNicknameMobile.textContent = '-';
             myNicknameMobile.style.color = '#1a1a1a';
             
             myColorDisplay.textContent = 'SPECTATOR';
 
-            // 덮어쓰기 UI 숨기기
             overwriteUIDisplay.innerHTML = '';
             overwriteUIContainer.classList.add('hidden');
             
-            // 로비 버튼 숨기기
             returnToLobbyBtn.classList.add('hidden');
 
-            // SCORES 숨기기, QUEUE 표시
             scoresSection.classList.add('hidden');
             queueSection.classList.remove('hidden');
             
-            // TIMER 숨기기
-            // desktopTimerContainer.classList.add('hidden'); // HTML 클래스에 의존
             mobileTimerContainer.classList.add('hidden');
 
             updateTimerDisplay("--");
@@ -704,17 +701,24 @@
             boardElement.innerHTML = `<div class="col-span-5 flex items-center justify-center h-full text-white text-xl font-bold tracking-widest uppercase bg-waiting-rainbow shadow-inner">
                         Waiting for match
                     </div>
-
                     <div id="message-modal" class="hidden absolute inset-0 z-50 flex items-center justify-center backdrop-blur-[2px] bg-black/30">
                         <div class="modal-content bg-white/20 border border-white/40 p-6 w-[80%] max-w-sm text-center backdrop-blur-md shadow-[0_8px_32px_0_rgba(31,38,135,0.37)] rounded-xl relative">
                             <button onclick="window.closeModal()" class="absolute top-2 right-3 text-white text-2xl font-bold p-1 leading-none hover:text-gray-300">&times;</button>
                             <h3 id="modal-title" class="text-2xl font-black uppercase mb-3 tracking-tighter text-white drop-shadow-md">TITLE</h3>
                             <p id="modal-content" class="text-white mb-6 font-bold whitespace-pre-line leading-relaxed text-sm drop-shadow-sm">Content</p>
+                            
+                            <button id="modal-play-again" class="w-full bg-black hover:bg-gray-800 text-white border border-white/20 font-black py-4 text-sm tracking-[0.2em] uppercase transition-all hover:scale-105 rounded-lg shadow-xl mb-3">
+                                PLAY AGAIN
+                            </button>
+
                             <button id="modal-return-to-lobby" onclick="location.reload()" class="w-full bg-white/20 hover:bg-white/40 text-white border border-white/50 font-black py-3 text-xs tracking-[0.2em] uppercase transition-all hover:scale-105 rounded-lg shadow-lg hidden">
                                 RETURN TO LOBBY
                             </button>
                         </div>
                     </div>`;
+             
+             // Re-attach Play Again Listener because we nuked the HTML
+             setupPlayAgainListener();
 
             if(window.SoundManager.activityTimer) clearTimeout(window.SoundManager.activityTimer);
         }
@@ -735,53 +739,33 @@
                 handleGameUpdate(docSnap.data());
             });
             
-            // 게임 시작 시 QUEUE 숨기고 SCORES 표시
             queueSection.classList.add('hidden');
             scoresSection.classList.remove('hidden');
             
-            // TIMER 표시
-            // desktopTimerContainer.classList.remove('hidden'); // 삭제: CSS(hidden md:block)에 의존
-            mobileTimerContainer.classList.remove('hidden'); // 모바일 타이머 컨테이너를 보이게 설정
+            mobileTimerContainer.classList.remove('hidden'); 
         }
 
-        // --- 새로운 덮어쓰기 UI 렌더링 함수 ---
         function renderOverwriteUI(overwritesLeft) {
             overwriteUIDisplay.innerHTML = '';
-            
             for (let i = 0; i < MAX_OVERWRITES; i++) {
                 const box = document.createElement('div');
                 box.className = 'overwrite-box';
-                
                 if (i < overwritesLeft) {
-                    // 남은 횟수는 그라데이션 적용
                     box.classList.add('bg-waiting-rainbow');
                 } else {
-                    // 사용한 횟수는 회색으로 표시
-                    box.style.backgroundColor = '#d1d5db'; // gray-300
+                    box.style.backgroundColor = '#d1d5db'; 
                 }
                 overwriteUIDisplay.appendChild(box);
             }
-
-            // 덮어쓰기 UI 전체 표시
             overwriteUIContainer.classList.remove('hidden');
         }
-        // --- 새로운 덮어쓰기 UI 렌더링 함수 끝 ---
-
 
         function handleGameUpdate(gameData) {
             if(window.SoundManager) window.SoundManager.resetActivityTimer();
             
-            // 게임 시작 시 QUEUE 숨기고 SCORES 표시 (안전장치)
             queueSection.classList.add('hidden');
             scoresSection.classList.remove('hidden');
-            
-            // TIMER 표시 상태 업데이트
-            // 데스크톱 (가로 모드)에서는 TIMER만 보이도록 (HTML 클래스 md:block/hidden 유지)
-            // desktopTimerContainer.classList.remove('hidden'); // 삭제: CSS(hidden md:block)에 의존
-            
-            // 모바일 (세로 모드)에서는 TURN TIMER만 보이도록 (HTML 클래스 md:hidden 유지)
             mobileTimerContainer.classList.remove('hidden');
-
 
             const myData = gameData.players[userId];
             if (myData) {
@@ -789,28 +773,21 @@
                 myOverwritesLeft = myData.overwrites;
                 const cInfo = COLOR_MAP[myColor];
                 
-                // 닉네임 텍스트 색상을 배정된 색상으로 변경
                 myNicknameDisplay.textContent = myData.nickname;
                 myNicknameMobile.textContent = myData.nickname;
                 myNicknameMobile.style.color = cInfo.html_color;
                 
                 myColorDisplay.textContent = cInfo.label;
-                
-                // 덮어쓰기 UI 업데이트
                 renderOverwriteUI(myOverwritesLeft);
-
             } else {
-                 // 관전자 또는 게임에 없는 경우 기본값 설정
                  myNicknameMobile.style.color = '#1a1a1a';
                  myColorDisplay.textContent = 'SPECTATOR';
                  overwriteUIContainer.classList.add('hidden');
             }
             
-            // 게임 중에는 AI 버튼 숨김
             aiBtn.classList.add('hidden');
             start2pBtn.classList.add('hidden');
             
-            // Return to Lobby 버튼 상태 관리
             if (gameData.status === 'finished') {
                 if (!document.getElementById('message-modal').classList.contains('hidden')) {
                      returnToLobbyBtn.classList.add('hidden');
@@ -821,39 +798,29 @@
                 returnToLobbyBtn.classList.add('hidden');
             }
 
-
-            // Game End Logic (Deferred if animating)
             if (gameData.status === 'finished') {
                 if (localTimerInterval) clearInterval(localTimerInterval);
                 updateTimerDisplay("0");
                 
                 if (gameData.turn > lastProcessedTurn) {
-                    // Game ended on the last turn, must wait for animation
                     pendingGameEndData = gameData;
-                    // Animation logic below will handle the rest
                 } else if (!isAnimating) {
-                    // Game finished and no animation pending (e.g., received finished state late)
                     showWinner(gameData.players);
                 }
             }
 
-
-            // Animation Processing Logic
             if (gameData.turn > lastProcessedTurn) {
                 if (gameData.lastRoundEvents) {
                     const events = JSON.parse(gameData.lastRoundEvents);
-                    // Store new board but don't render it yet
                     pendingBoardState = JSON.parse(gameData.board);
                     isAnimating = true;
                     triggerSequentialAnimations(events, gameData);
                 } else {
-                    // No events, just update
                     currentBoardState = JSON.parse(gameData.board);
                     renderBoard(currentBoardState, gameData);
                 }
                 lastProcessedTurn = gameData.turn;
             } else if (!isAnimating) {
-                // Regular update if not animating
                 currentBoardState = JSON.parse(gameData.board);
                 renderBoard(currentBoardState, gameData);
             }
@@ -871,46 +838,38 @@
                 currentBoardState = pendingBoardState;
                 renderBoard(currentBoardState, gameData);
                 
-                // 팝업 지연 로직 (애니메이션이 없는 경우)
                 if (pendingGameEndData) {
                     setTimeout(() => {
                         showWinner(pendingGameEndData.players);
                         pendingGameEndData = null;
-                    }, 1000); // 1초 지연
+                    }, 1000); 
                 }
                 return;
             }
             
-            // Queue animation steps
             let accumulatedDelay = 0;
 
             events.forEach((ev, index) => {
                 const cellIdx = (ev.r * BOARD_SIZE) + ev.c;
-                
-                // Determine step duration based on event type
                 let duration = 1000;
                 if(ev.type === 'flip') duration = 500;
                 else if (ev.type === 'conflict') {
-                    duration = (ev.colors.length * 1000) + 1000; // Paint time + 1s vanish
+                    duration = (ev.colors.length * 1000) + 1000; 
                 }
 
                 setTimeout(() => {
                     const cells = boardElement.querySelectorAll('.cell');
                     if (cells[cellIdx]) {
                         const cell = cells[cellIdx];
-                        
-                        // 애니메이션 실행 전 애니메이션 초기화 (안정성)
                         cell.style.animation = 'none';
-                        cell.offsetHeight; // force reflow
+                        cell.offsetHeight; 
                         cell.style.animation = null; 
 
                         if (ev.type === 'conflict') {
                             if(window.SoundManager) window.SoundManager.playConflict();
-                            
                             const sortOrder = ['R', 'Y', 'B'];
                             const colors = (ev.colors || []).sort((a, b) => sortOrder.indexOf(a) - sortOrder.indexOf(b));
                             
-                            // 1. Paint sequence
                             colors.forEach((cCode, i) => {
                                 setTimeout(() => {
                                     if(window.SoundManager) window.SoundManager.playGlass(); 
@@ -920,7 +879,6 @@
                                 }, i * 1000);
                             });
 
-                            // 2. Vanish
                             setTimeout(() => {
                                 cell.style.animation = 'vanish-anim 1s forwards';
                             }, colors.length * 1000);
@@ -942,35 +900,29 @@
                 accumulatedDelay += duration;
             });
 
-            // 모든 애니메이션 완료 후 실행
             setTimeout(() => {
                 isAnimating = false;
                 currentBoardState = pendingBoardState;
                 renderBoard(currentBoardState, gameData);
 
-                // 팝업 지연 로직 (애니메이션이 있는 경우)
                 if (pendingGameEndData) {
                     setTimeout(() => {
                         showWinner(pendingGameEndData.players);
                         pendingGameEndData = null;
-                    }, 1000); // 1초 지연
+                    }, 1000); 
                 }
             }, accumulatedDelay);
         }
 
         function updateTimerDisplay(text) {
-            // Override text to "0" if animating
             const displayText = isAnimating ? "0" : text;
-
             if(lastTimerValue !== displayText) {
                 if(window.SoundManager && displayText !== "0" && displayText !== "--") {
                     window.SoundManager.playTick();
                 }
                 lastTimerValue = displayText;
             }
-
             timerDisplay.textContent = displayText;
-            // 모바일 타이머 표시 업데이트
             document.getElementById('timer-display-mobile').textContent = displayText;
             
             if(displayText === "0") {
@@ -990,17 +942,13 @@
         function runClientTimer(deadline, gameData) {
             if (localTimerInterval) clearInterval(localTimerInterval);
             const updateTimer = () => {
-                // If animating, force UI to 0 and don't calc logic
                 if (isAnimating) {
                     updateTimerDisplay("0");
                     return;
                 }
-
                 const now = Date.now();
                 const diff = deadline - now;
                 const secondsLeft = Math.ceil(diff / 1000);
-                
-                // Allow display to show up to the full duration
                 const displaySeconds = Math.max(0, secondsLeft - 1);
                 
                 if (secondsLeft > 0) {
@@ -1016,6 +964,64 @@
             localTimerInterval = setInterval(updateTimer, 100);
         }
 
+        // --- NEW STRATEGIC AI LOGIC ---
+        function getStrategicAIMove(board, playerObj, color) {
+            let possibleMoves = [];
+            const emptyCells = [];
+            const enemyCells = [];
+            
+            // 1. Identify candidates
+            for(let r=0; r<BOARD_SIZE; r++) {
+                for(let c=0; c<BOARD_SIZE; c++) {
+                    if (board[r][c] === '') emptyCells.push({r, c});
+                    else if (board[r][c] !== color) enemyCells.push({r, c});
+                }
+            }
+
+            // 2. Evaluate Normal Moves
+            emptyCells.forEach(cell => {
+                const flips = applyOthello(board, cell.r, cell.c, color);
+                possibleMoves.push({
+                    r: cell.r, c: cell.c, isOverwrite: false,
+                    flips: flips.length,
+                    score: flips.length * 10 // Base score for flipping
+                });
+            });
+
+            // 3. Evaluate Overwrite Moves (only if charges left)
+            if (playerObj.overwrites > 0) {
+                // Determine urgency based on remaining empty cells
+                // Fewer empty cells = higher urgency to use overwrites
+                const urgencyBonus = Math.max(0, (25 - emptyCells.length) * 2); 
+
+                enemyCells.forEach(cell => {
+                    const flips = applyOthello(board, cell.r, cell.c, color);
+                    // Base score for flips + Bonus for using an overwrite strategically + Urgency
+                    // We add 5 base points to encourage using it if it flips something
+                    let score = (flips.length * 12) + 5 + urgencyBonus; 
+                    
+                    possibleMoves.push({
+                        r: cell.r, c: cell.c, isOverwrite: true,
+                        flips: flips.length,
+                        score: score
+                    });
+                });
+            }
+
+            // 4. Sort by Score descending
+            possibleMoves.sort((a, b) => b.score - a.score);
+
+            // 5. Pick best, or random if no moves (unlikely unless full)
+            if (possibleMoves.length > 0) {
+                // Add slight randomness to top tied moves so it's not 100% predictable
+                const bestScore = possibleMoves[0].score;
+                const topMoves = possibleMoves.filter(m => m.score >= bestScore - 5);
+                return topMoves[Math.floor(Math.random() * topMoves.length)];
+            }
+            
+            return null;
+        }
+
         async function resolveTurn(gameData) {
             if (isResolving) return;
             isResolving = true;
@@ -1026,9 +1032,15 @@
             for (const pid in players) {
                 const p = players[pid];
                 if (p.isAI) {
-                    const aiMove = getRandomMove(board);
-                    // AI Move is always non-overwrite
-                    if (aiMove) moves.push({ id: pid, color: p.color, r: aiMove.r, c: aiMove.c, isOverwrite: false });
+                    // Use new Strategic Logic
+                    const aiMove = getStrategicAIMove(board, p, p.color);
+                    if (aiMove) {
+                         moves.push({ id: pid, color: p.color, r: aiMove.r, c: aiMove.c, isOverwrite: aiMove.isOverwrite });
+                    } else {
+                        // Fallback (shouldn't happen often)
+                        const rand = getRandomMove(board);
+                        if(rand) moves.push({ id: pid, color: p.color, r: rand.r, c: rand.c, isOverwrite: false });
+                    }
                 } else if (p.lastMove) {
                     moves.push({ id: pid, color: p.color, r: p.lastMove.r, c: p.lastMove.c, isOverwrite: p.lastMove.isOverwrite });
                 }
@@ -1050,7 +1062,6 @@
                 const [r, c] = key.split(',').map(Number);
 
                 if (cellMoves.length > 1) {
-                    // Collision Detected
                     const colors = cellMoves.map(m => m.color);
                     roundEvents.push({ r, c, type: 'conflict', colors: colors });
                     totalAnimTime += (colors.length * 1000) + 1000;
@@ -1060,12 +1071,9 @@
 
             const overwriteConsumers = new Set();
             
-            // Only process moves that didn't conflict and meet placement rules
             const validMoves = moves.filter(m => {
-                if (movesAtPos[`${m.r},${m.c}`].length > 1) return false; // Conflict already handled
-                
+                if (movesAtPos[`${m.r},${m.c}`].length > 1) return false; 
                 const currentOwner = board[m.r][m.c];
-                
                 if (m.isOverwrite) {
                     if (currentOwner === '' || currentOwner === m.color) return false; 
                     if (players[m.id].overwrites <= 0) return false; 
@@ -1078,7 +1086,7 @@
             validMoves.forEach(m => {
                 board[m.r][m.c] = m.color;
                 roundEvents.push({ r: m.r, c: m.c, color: m.color, type: 'success' });
-                totalAnimTime += 1000; // Success anim
+                totalAnimTime += 1000; 
 
                 if(m.isOverwrite) overwriteConsumers.add(m.id);
                 
@@ -1086,7 +1094,7 @@
                 flips.forEach(f => {
                     board[f.r][f.c] = m.color; 
                     roundEvents.push({ r: f.r, c: f.c, color: m.color, type: 'flip' });
-                    totalAnimTime += 500; // Flip anim
+                    totalAnimTime += 500; 
                 });
             });
 
@@ -1108,11 +1116,9 @@
                 };
             }
 
-            // 종료 조건: 빈칸이 1개 이하일 때 종료 (25 - 1 = 24개 이상 채워졌을 때)
             const totalCells = BOARD_SIZE * BOARD_SIZE;
             const isEnd = finalFilled >= (totalCells - 1); 
             
-            // Add Animation Duration to Deadline
             const nextDeadline = Date.now() + TURN_DURATION_MS + NETWORK_BUFFER_MS + totalAnimTime + 500;
 
             await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'games', gameId), {
@@ -1155,12 +1161,10 @@
             cells.forEach(el => el.remove());
             const waitingScreen = boardElement.querySelector('.col-span-5');
             if(waitingScreen) {
-                // 게임이 시작되었으면, 대기 화면 숨김
                 if(gameData.status === 'playing') waitingScreen.classList.add('hidden');
                 else waitingScreen.classList.remove('hidden');
             }
             
-            // Return to Lobby 버튼 상태 관리
             if (gameData.status === 'finished') {
                 if (!document.getElementById('message-modal').classList.contains('hidden')) {
                      returnToLobbyBtn.classList.add('hidden');
@@ -1170,7 +1174,6 @@
             } else {
                 returnToLobbyBtn.classList.add('hidden');
             }
-
 
             const frag = document.createDocumentFragment();
             for (let r = 0; r < BOARD_SIZE; r++) {
@@ -1263,22 +1266,15 @@
 
                 while(nr>=0 && nr<BOARD_SIZE && nc>=0 && nc<BOARD_SIZE) {
                     const cellColor = board[nr][nc];
-                    
                     if(cellColor === '') break; 
-                    
                     if(cellColor === color) {
                         foundOwnColor = true;
                         break; 
                     }
-                    
                     flippable.push({r:nr, c:nc});
-
                     nr += dr; nc += dc;
                 }
-
-                if(foundOwnColor) {
-                    flippedCells = flippedCells.concat(flippable);
-                }
+                if(foundOwnColor) flippedCells = flippedCells.concat(flippable);
             });
             return flippedCells;
         }
@@ -1298,25 +1294,51 @@
              document.getElementById('modal-title').textContent = title;
              document.getElementById('modal-content').textContent = content;
              document.getElementById('message-modal').classList.remove('hidden');
-             
-             // 모달이 뜬 상태에서 로비 버튼 숨김
              returnToLobbyBtn.classList.add('hidden');
         }
 
-        // X 버튼 클릭 핸들러: 모달 닫고, 게임 오버 상태일 때 로비 버튼 표시
         window.closeModal = () => {
              document.getElementById('message-modal').classList.add('hidden');
-             // 게임 오버 상태일 때만 로비 버튼 활성화
              if (gameId && unsubscribeGame) {
                  returnToLobbyBtn.classList.remove('hidden');
              }
         };
-        
+
+        // --- PLAY AGAIN LISTENER SETUP ---
+        function setupPlayAgainListener() {
+            const btn = document.getElementById('modal-play-again');
+            if(btn) {
+                btn.onclick = async () => {
+                     // 1. Hide modal
+                     document.getElementById('message-modal').classList.add('hidden');
+                     
+                     // 2. Clear current game listeners
+                     if(unsubscribeGame) unsubscribeGame();
+                     if(localTimerInterval) clearInterval(localTimerInterval);
+                     
+                     // 3. Clear UI slightly
+                     boardElement.innerHTML = ''; // Force clear board
+                     resetLocalStateAndUI(); // Resets everything including queue subscription
+                     
+                     // 4. Determine action based on last mode
+                     if (lastGameMode === 'AI') {
+                        // Restart Solo AI
+                        await startSoloAiGame();
+                     } else {
+                        // Restart Queue (PVP or PVP+AI)
+                        // Pre-fill nickname and start searching
+                        nicknameInput.value = myNickname;
+                        performJoinQueue();
+                     }
+                };
+            }
+        }
+        // Initial setup
+        setupPlayAgainListener();
+
         function resetUI() {
-            // Find Match 버튼 상태 초기화
             joinBtn.textContent = "Find Match";
             joinBtn.disabled = true;
-            // 닉네임 입력 가능하도록 복원
             nicknameInput.disabled = false;
         }
     </script>
