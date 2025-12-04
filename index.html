@@ -12,7 +12,6 @@
             font-family: 'Montserrat', sans-serif; 
             background-color: #f0f0f0; 
             color: #1a1a1a;
-            /* 모바일에서 터치 하이라이트 제거 */
             -webkit-tap-highlight-color: transparent;
         }
 
@@ -240,7 +239,7 @@
         window.SoundManager = {
             ctx: null,
             activityTimer: null,
-            INACTIVITY_TIMEOUT_MS: 10000, 
+            INACTIVITY_TIMEOUT_MS: 10000, // 10초 타임아웃 설정
 
             init: function() {
                 if (this.ctx) return;
@@ -251,20 +250,26 @@
                 // 활동 감지 타이머 시작
                 this.resetActivityTimer();
 
-                // 감지할 이벤트 목록 추가
+                // 감지할 이벤트 목록 추가 (마우스, 키보드, 터치)
                 ['mousemove', 'keydown', 'mousedown', 'touchstart', 'touchmove', 'scroll', 'click'].forEach(evt => {
                     document.addEventListener(evt, this.resetActivityTimer.bind(this));
                 });
 
-                // [추가됨] 모바일 화면 꺼짐(백그라운드 진입) 감지 -> 즉시 대기열 이탈
+                // 1. 화면 숨김/탭 전환 시 대기열 이탈
                 document.addEventListener('visibilitychange', async () => {
                     if (document.visibilityState === 'hidden') {
-                        // 대기열(Queue)에 있고, 아직 게임이 시작되지 않은 상태라면
                         if (queueDocId && !gameId) {
-                            console.log("Screen off or Background: Leaving queue.");
-                            await leaveQueue(); // 대기열 삭제
-                            resetLocalStateAndUI(); // 초기화면으로 리셋
+                            console.log("Background detected: Leaving queue.");
+                            await leaveQueue(); 
+                            resetLocalStateAndUI(); 
                         }
+                    }
+                });
+
+                // 2. 창 닫기 시 대기열 이탈 시도
+                window.addEventListener('beforeunload', () => {
+                    if (queueDocId && !gameId) {
+                        leaveQueue(); 
                     }
                 });
             },
@@ -274,9 +279,10 @@
                 clearTimeout(this.activityTimer);
                 
                 this.activityTimer = setTimeout(async () => {
-                    // 대기열에 진입한 상태(queueDocId 존재) & 게임 시작 전(!gameId)
+                    // 조건: 대기열에 진입한 상태(queueDocId 존재) & 게임 시작 전(!gameId)
+                    // 10초 동안 아무 입력이 없으면 자동 로그아웃
                     if (queueDocId && !gameId) {
-                        console.log("Inactivity detected: Silent logout.");
+                        console.log("Inactivity (10s) detected: Silent logout.");
                         await leaveQueue(); 
                         resetLocalStateAndUI(); 
                     }
@@ -509,8 +515,10 @@
                 }
             }
             
-            if(window.SoundManager) window.SoundManager.init();
-            if(window.SoundManager) window.SoundManager.resetActivityTimer();
+            if(window.SoundManager) {
+                window.SoundManager.init();
+                window.SoundManager.resetActivityTimer(); // 대기열 진입 시점부터 타이머 리셋 및 시작
+            }
 
             nicknameSection.classList.add('hidden'); 
             gameButtonsDiv.classList.remove('hidden'); 
