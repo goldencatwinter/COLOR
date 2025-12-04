@@ -455,6 +455,9 @@
         let lastTimerValue = ""; 
 
         let lastGameMode = null; 
+        
+        // --- NEW: Track if we have sent the move for this turn ---
+        let isMoveCommitted = false; 
 
         // --- Strict Queue Watchdog ---
         let queueKickTimer = null;
@@ -637,7 +640,6 @@
             await initGameWithPlayers(top2, true); 
         });
 
-        // [FIX] Added listener for Solo with AI button
         aiBtn.addEventListener('click', async () => {
             await startSoloAiGame();
         });
@@ -703,7 +705,6 @@
         async function startSoloAiGame() {
             if(window.SoundManager) window.SoundManager.init();
             
-            // Note: This calls leaveQueue -> which calls stopQueueWatchdog
             if (queueDocId) await leaveQueue();
 
             lastGameMode = 'AI';
@@ -726,7 +727,6 @@
         }
 
         async function leaveQueue() {
-            // Stops strict watchdog to prevent kicking while transitioning
             stopQueueWatchdog();
 
             if (unsubscribeMyTicket) { unsubscribeMyTicket(); unsubscribeMyTicket = null; }
@@ -757,6 +757,7 @@
             selectedCell = null;
             isResolving = false;
             lastTimerValue = "";
+            isMoveCommitted = false; // Reset move status
             
             nicknameSection.classList.remove('hidden');
             joinBtn.textContent = "Find Match";
@@ -888,7 +889,12 @@
                 }
             }
 
+            // --- Detect New Turn ---
             if (gameData.turn > lastProcessedTurn) {
+                // New Turn detected: Reset local selection state for the new turn
+                isMoveCommitted = false;
+                selectedCell = null;
+
                 if (gameData.lastRoundEvents) {
                     const events = JSON.parse(gameData.lastRoundEvents);
                     pendingBoardState = JSON.parse(gameData.board);
@@ -1029,9 +1035,16 @@
                 
                 const now = Date.now();
                 const totalDiff = deadline - now;
-                
                 const visualDiff = totalDiff - NETWORK_BUFFER_MS;
                 
+                // --- NEW: Commit move logic ---
+                // If we are very close to the effective deadline (e.g. 0.5s remaining),
+                // and we haven't sent the move yet, send it now.
+                // visualDiff is roughly how much time the user 'sees' on the clock (in ms).
+                if (visualDiff <= 500 && !isMoveCommitted && selectedCell) {
+                    commitCurrentMove();
+                }
+
                 let secondsLeft = Math.ceil(visualDiff / 1000);
 
                 if (secondsLeft > 0) {
@@ -1050,6 +1063,24 @@
             
             updateTimer();
             localTimerInterval = setInterval(updateTimer, 100);
+        }
+
+        // --- NEW: Commit Function ---
+        async function commitCurrentMove() {
+            if (!gameId || !userId || !selectedCell || isMoveCommitted) return;
+
+            isMoveCommitted = true; // Mark as sent to prevent double sending
+            
+            try {
+                await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'games', gameId), {
+                    [`players.${userId}.lastMove`]: selectedCell
+                });
+                console.log("Move committed to DB:", selectedCell);
+            } catch (e) {
+                console.error("Failed to commit move:", e);
+                // If it failed, maybe we allow retry? 
+                // For now, keep isMoveCommitted = true to avoid flooding if offline.
+            }
         }
 
         function getStrategicAIMove(board, playerObj, color) {
@@ -1256,7 +1287,8 @@
         }
 
         window.handleCellClick = async (r, c) => {
-            if (!gameId || !myColor || isResolving || isAnimating) return;
+            // Check move committed status to prevent changing mind last ms
+            if (!gameId || !myColor || isResolving || isAnimating || isMoveCommitted) return;
 
             const cellColor = currentBoardState[r][c];
             let isOverwrite = false;
@@ -1268,15 +1300,9 @@
             
             selectedCell = { r, c, isOverwrite };
             renderBoard(currentBoardState, { status: 'playing' }); 
-            try {
-                await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'games', gameId), {
-                    [`players.${userId}.lastMove`]: { r, c, isOverwrite }
-                });
-            } catch (e) {
-                console.error("Send failed", e);
-                selectedCell = null;
-                renderBoard(currentBoardState, { status: 'playing' });
-            }
+            
+            // --- UPDATED: removed the immediate updateDoc call ---
+            // The actual move will be sent in runClientTimer when timer is low.
         };
 
         function renderBoard(board, gameData) {
