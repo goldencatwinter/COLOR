@@ -1,0 +1,1337 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>COLOR - 3 Player Strategy</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700;900&display=swap');
+        
+        body { 
+            font-family: 'Montserrat', sans-serif; 
+            background-color: #f0f0f0; 
+            color: #1a1a1a;
+            /* 모바일에서 터치 하이라이트 제거 */
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        /* --- Animations --- */
+        @keyframes rainbowCycle {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+
+        @keyframes subtle-shine {
+            0% { left: -100%; opacity: 0; }
+            50% { opacity: 0.6; }
+            100% { left: 100%; opacity: 0; }
+        }
+
+        @keyframes popIn {
+            0% { transform: scale(0.8); opacity: 0; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+
+        @keyframes shine-pulse {
+            0% { 
+                transform: scale(0.9); 
+                filter: brightness(1.5);
+                box-shadow: 0 0 0 0 rgba(255,255,255,0.7);
+            }
+            50% { 
+                transform: scale(1.05); 
+                filter: brightness(1.2);
+                box-shadow: 0 0 20px 5px rgba(255,255,255,0.5);
+            }
+            100% { 
+                transform: scale(1); 
+                filter: brightness(1);
+                box-shadow: 0 0 0 0 rgba(255,255,255,0);
+            }
+        }
+
+        @keyframes vanish-anim {
+            0% { transform: scale(1); opacity: 1; }
+            100% { transform: scale(0.5); opacity: 0; }
+        }
+
+        @keyframes flip-anim {
+            0% { transform: perspective(400px) rotateY(0); }
+            50% { transform: perspective(400px) rotateY(90deg); filter: brightness(2); }
+            100% { transform: perspective(400px) rotateY(0); }
+        }
+
+        .title-rainbow {
+            background: linear-gradient(to right, #ff0000, #ff8800, #ffff00, #008000, #0000ff, #4b0082, #ee82ee);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            background-size: 200% auto;
+            animation: rainbowCycle 10s linear infinite;
+        }
+
+        .bg-waiting-rainbow {
+            background: linear-gradient(45deg, 
+                #ff0000, #ffa500, #ffff00, #008000, #0000ff, #4b0082, #ee82ee, #ff0000
+            );
+            background-size: 400% 400%;
+            animation: rainbowCycle 20s ease infinite;
+        }
+
+        .overwrite-box {
+            width: 14px;
+            height: 14px;
+            border: 1px solid rgba(255, 255, 255, 0.5);
+            box-shadow: 0 0 3px rgba(0, 0, 0, 0.4);
+            margin: 0 2px;
+            transition: opacity 0.3s ease-out;
+        }
+
+        .bg-player-red { background-color: rgb(255, 0, 0); }
+        .bg-player-yellow { background-color: rgb(255, 255, 0); }
+        .bg-player-blue { background-color: rgb(0, 0, 255); }
+
+        .text-player-red { color: rgb(255, 0, 0); }
+        .text-player-yellow { color: rgb(210, 180, 0); } 
+        .text-player-blue { color: rgb(0, 0, 255); }
+
+        .breaker-shine {
+            position: relative;
+            overflow: hidden;
+        }
+        .breaker-shine::after {
+            content: '';
+            position: absolute;
+            top: 0; left: -100%; width: 50%; height: 100%;
+            background: linear-gradient(to right, transparent, rgba(255,255,255,0.9), transparent);
+            transform: skewX(-25deg);
+            animation: subtle-shine 0.6s ease-out forwards;
+            pointer-events: none;
+        }
+
+        .cell { transition: transform 0.1s ease-in-out; }
+        .cell:hover:not(.occupied-immutable) { filter: brightness(0.9); cursor: pointer; }
+        
+        @keyframes slideIn { from { opacity: 0; transform: translateX(-10px); } to { opacity: 1; transform: translateX(0); } }
+        .queue-item { animation: slideIn 0.3s ease-out forwards; }
+
+        .modal-content { animation: popIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
+
+        ::-webkit-scrollbar { width: 4px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #d4d4d4; }
+    </style>
+</head>
+<body class="flex flex-col items-center justify-center min-h-screen p-2 md:p-8" onclick="SoundManager.init()">
+
+    <div id="game-container" class="w-full max-w-7xl bg-white shadow-2xl flex flex-col lg:flex-row min-h-[700px] border border-gray-300">
+        
+        <div class="flex-1 flex flex-col p-6 md:p-10 relative">
+            
+            <div class="mb-8 flex justify-between items-end">
+                <h1 class="text-6xl md:text-7xl font-black tracking-tighter title-rainbow">COLOR</h1>
+                <div id="desktop-timer-container" class="text-right hidden md:block">
+                    <p class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">TIMER</p>
+                    <p class="text-5xl font-mono font-bold leading-none" id="timer-display">--</p>
+                </div>
+            </div>
+
+            <div id="my-info-mobile" class="flex md:hidden justify-between items-end border-b-2 border-black pb-4 mb-6">
+                <div>
+                    <p class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">PLAYER</p>
+                    <p class="text-lg font-black uppercase tracking-tight truncate" id="my-nickname-mobile" style="color:#1a1a1a;">-</p>
+                </div>
+                <div id="mobile-timer-container" class="text-right">
+                    <p class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">TURN TIMER</p>
+                    <p class="text-4xl font-mono font-bold leading-none" id="timer-display-mobile">--</p>
+                </div>
+            </div>
+
+            <div class="flex-1 flex items-center justify-center min-h-[400px] mb-8">
+                <div id="game-board" class="relative grid grid-cols-5 gap-px bg-gray-300 p-px w-full max-w-[600px] aspect-square border-2 border-gray-300 shadow-lg">
+                    
+                    <div class="col-span-5 flex items-center justify-center h-full text-white text-xl font-bold tracking-widest uppercase bg-waiting-rainbow shadow-inner">
+                        Waiting for match
+                    </div>
+
+                    <div id="message-modal" class="hidden absolute inset-0 z-50 flex items-center justify-center backdrop-blur-[2px] bg-black/30">
+                        <div class="modal-content bg-white/20 border border-white/40 p-6 w-[80%] max-w-sm text-center backdrop-blur-md shadow-[0_8px_32px_0_rgba(31,38,135,0.37)] rounded-xl relative">
+                            <button onclick="window.closeModal()" class="absolute top-2 right-3 text-white text-2xl font-bold p-1 leading-none hover:text-gray-300">&times;</button>
+                            
+                            <h3 id="modal-title" class="text-2xl font-black uppercase mb-3 tracking-tighter text-white drop-shadow-md">TITLE</h3>
+                            <p id="modal-content" class="text-white mb-6 font-bold whitespace-pre-line leading-relaxed text-sm drop-shadow-sm">Content</p>
+                            
+                            <button id="modal-play-again" class="w-full bg-black hover:bg-gray-800 text-white border border-white/20 font-black py-4 text-sm tracking-[0.2em] uppercase transition-all hover:scale-105 rounded-lg shadow-xl mb-3">
+                                PLAY AGAIN
+                            </button>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+            
+            <div class="flex flex-col items-center mt-auto w-full">
+                
+                <div id="overwrite-ui-container" class="w-full max-w-[600px] flex justify-end items-center px-2 mb-4 hidden">
+                    <p class="text-xs font-bold text-gray-500 uppercase tracking-widest mr-2">OVERWRITE</p>
+                    <div id="overwrite-ui-display" class="flex items-center">
+                        </div>
+                </div>
+
+                <div class="flex flex-col gap-3 w-full max-w-md">
+                    <div id="nickname-section" class="w-full">
+                        <input type="text" id="nickname-input" placeholder="ENTER YOUR NAME" maxlength="10" 
+                               class="w-full bg-gray-100 border-2 border-gray-200 p-4 font-bold text-center uppercase tracking-widest focus:outline-none focus:border-black transition-colors mb-3">
+                        <button id="join-queue-btn" disabled
+                                class="w-full bg-black text-white hover:bg-gray-800 font-bold py-4 text-sm tracking-widest uppercase transition-colors disabled:opacity-30 disabled:cursor-not-allowed">
+                            Find Match
+                        </button>
+                    </div>
+
+                    <div id="game-buttons" class="hidden flex flex-col gap-2 w-full">
+                        <button id="force-ai-btn" 
+                                class="w-full bg-white text-black border-2 border-black hover:bg-black hover:text-white font-bold py-3 text-xs tracking-widest uppercase transition-colors">
+                            Solo with AI
+                        </button>
+                        <button id="start-2p-ai-btn"
+                                class="w-full bg-gray-900 text-yellow-400 border-2 border-gray-900 hover:bg-gray-800 font-bold py-3 text-xs tracking-widest uppercase transition-colors shadow-lg">
+                            Start with AI (2P + 1 AI)
+                        </button>
+                    </div>
+                </div>
+            </div>
+            
+            <span id="my-nickname-display" class="hidden"></span>
+            <span id="my-color-display" class="hidden"></span>
+        </div>
+
+        <div class="w-full lg:w-96 bg-gray-50 border-t lg:border-t-0 lg:border-l border-gray-200 p-8 flex flex-col gap-8">
+            
+            <div id="scores-section" class="hidden">
+                <p class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2">SCORES</p>
+                <ul id="score-list" class="space-y-2">
+                    <li class="text-gray-300 text-xs uppercase tracking-widest py-2">Game not started</li>
+                </ul>
+            </div>
+
+            <div id="queue-section" class="flex-1 min-h-[200px] flex flex-col">
+                <div class="flex justify-between items-center mb-4 border-b border-gray-200 pb-2">
+                    <p class="text-[10px] font-bold text-gray-400 uppercase tracking-widest">QUEUE</p>
+                    <span id="queue-count" class="text-xs font-bold bg-black text-white px-2 py-0.5">0</span>
+                </div>
+                <div id="queue-list" class="flex-1 overflow-y-auto space-y-2 pr-2">
+                    <p class="text-gray-300 text-xs text-center py-8 uppercase tracking-widest">No players waiting</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+        import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+        import { 
+            getFirestore, doc, setDoc, updateDoc, deleteDoc, onSnapshot, collection, 
+            query, where, getDocs, runTransaction, serverTimestamp, orderBy, limit 
+        } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+        // --- Sound Manager (Web Audio API) & Inactivity Logic ---
+        window.SoundManager = {
+            ctx: null,
+            activityTimer: null,
+            INACTIVITY_TIMEOUT_MS: 60000, // 1분 (60,000ms)
+
+            init: function() {
+                if (this.ctx) return;
+                const AudioContext = window.AudioContext || window.webkitAudioContext;
+                this.ctx = new AudioContext();
+                this.playAmbient();
+                
+                // 활동 감지 타이머 시작
+                this.resetActivityTimer();
+
+                // 감지할 이벤트 목록 추가 (모바일 touchmove 등 포함)
+                ['mousemove', 'keydown', 'mousedown', 'touchstart', 'touchmove', 'scroll', 'click'].forEach(evt => {
+                    document.addEventListener(evt, this.resetActivityTimer.bind(this));
+                });
+            },
+            
+            // 활동 감지 리셋 함수
+            resetActivityTimer: function() {
+                clearTimeout(this.activityTimer);
+                
+                this.activityTimer = setTimeout(async () => {
+                    // 조건: 닉네임이 있고(대기열 진입함) & 게임(gameId)은 아직 안 함
+                    if (myNickname && !gameId) {
+                        console.log("Inactivity detected: Silent logout.");
+                        await leaveQueue(); // 대기열에서 제거 (비동기)
+                        resetLocalStateAndUI(); // 조용히 UI 리셋 (팝업 없음)
+                    }
+                }, this.INACTIVITY_TIMEOUT_MS);
+            },
+
+            playAmbient: function() {
+                const t = this.ctx.currentTime;
+                const gain = this.ctx.createGain();
+                gain.connect(this.ctx.destination);
+                
+                const freqs = [261.63, 329.63, 392.00, 493.88]; 
+                
+                freqs.forEach((f, i) => {
+                    const osc = this.ctx.createOscillator();
+                    osc.type = i % 2 === 0 ? 'sine' : 'triangle';
+                    osc.frequency.value = f;
+                    
+                    const oscGain = this.ctx.createGain();
+                    oscGain.gain.value = 0.03; 
+                    
+                    const lfo = this.ctx.createOscillator();
+                    lfo.frequency.value = 0.1 + (i * 0.05);
+                    const lfoGain = this.ctx.createGain();
+                    lfoGain.gain.value = 0.01;
+                    lfo.connect(lfoGain);
+                    lfoGain.connect(oscGain.gain);
+                    lfo.start();
+
+                    osc.connect(oscGain);
+                    oscGain.connect(gain);
+                    osc.start();
+                });
+
+                gain.gain.setValueAtTime(0, t);
+                gain.gain.linearRampToValueAtTime(0.5, t + 5); 
+            },
+            playGlass: function() { 
+                if (!this.ctx) return;
+                const t = this.ctx.currentTime;
+                
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(1500, t); 
+                osc.frequency.exponentialRampToValueAtTime(1500, t + 1); 
+                
+                gain.gain.setValueAtTime(0, t);
+                gain.gain.linearRampToValueAtTime(0.4, t + 0.01); 
+                gain.gain.exponentialRampToValueAtTime(0.001, t + 1.5); 
+
+                osc.connect(gain);
+                gain.connect(this.ctx.destination);
+                osc.start(t);
+                osc.stop(t + 1.5);
+                
+                const osc2 = this.ctx.createOscillator();
+                const gain2 = this.ctx.createGain();
+                osc2.type = 'triangle';
+                osc2.frequency.setValueAtTime(3000, t);
+                
+                gain2.gain.setValueAtTime(0, t);
+                gain2.gain.linearRampToValueAtTime(0.05, t + 0.01);
+                gain2.gain.exponentialRampToValueAtTime(0.001, t + 1.0);
+                
+                osc2.connect(gain2);
+                gain2.connect(this.ctx.destination);
+                osc2.start(t);
+                osc2.stop(t + 1.0);
+            },
+            playConflict: function() { 
+                if (!this.ctx) return;
+                const t = this.ctx.currentTime;
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                
+                osc.type = 'sawtooth';
+                osc.frequency.setValueAtTime(100, t);
+                osc.frequency.linearRampToValueAtTime(50, t + 0.5);
+                
+                gain.gain.setValueAtTime(0.1, t);
+                gain.gain.exponentialRampToValueAtTime(0.001, t + 0.5);
+                
+                osc.connect(gain);
+                gain.connect(this.ctx.destination);
+                osc.start(t);
+                osc.stop(t + 0.5);
+            },
+            playTick: function() {
+                if (!this.ctx) return;
+                const t = this.ctx.currentTime;
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                const filter = this.ctx.createBiquadFilter();
+
+                osc.type = 'square';
+                filter.type = 'highpass';
+                filter.frequency.value = 2000;
+
+                osc.connect(filter);
+                filter.connect(gain);
+                gain.connect(this.ctx.destination);
+
+                osc.frequency.setValueAtTime(800, t);
+                gain.gain.setValueAtTime(0.15, t);
+                gain.gain.exponentialRampToValueAtTime(0.001, t + 0.05);
+
+                osc.start();
+                osc.stop(t + 0.05);
+            }
+        };
+
+        // --- Config ---
+        const BOARD_SIZE = 5;
+        const TURN_DURATION_MS = 5000; 
+        const FIRST_TURN_DURATION_MS = 10000; 
+        const NETWORK_BUFFER_MS = 1000;
+        const MAX_OVERWRITES = 3; 
+        
+        const COLORS = ['R', 'Y', 'B']; 
+        
+        const COLOR_MAP = {
+            'R': { code: 'bg-player-red', text: 'text-player-red', label: 'RED', html_color: 'rgb(255, 0, 0)' },
+            'Y': { code: 'bg-player-yellow', text: 'text-player-yellow', label: 'YELLOW', html_color: 'rgb(210, 180, 0)' },
+            'B': { code: 'bg-player-blue', text: 'text-player-blue', label: 'BLUE', html_color: 'rgb(0, 0, 255)' },
+        };
+        
+        const firebaseConfig = {
+            apiKey: "AIzaSyA1DEzZvw6_63cLUk_YeWYRInZ0drIzd5Q",
+            authDomain: "color-a6d38.firebaseapp.com",
+            projectId: "color-a6d38",
+            storageBucket: "color-a6d38.firebasestorage.app",
+            messagingSenderId: "761735384766",
+            appId: "1:761735384766:web:cc52566ccafac650a558ef"
+        };
+        
+        const appId = 'Color-Game-V7-Conflict';
+
+        let app, db, auth, userId;
+        let myNickname = "";
+        let queueDocId = null;
+        let gameId = null;
+        let myColor = null;
+        let myOverwritesLeft = MAX_OVERWRITES;
+        let currentQueueDocs = []; 
+        let lastProcessedTurn = 0; 
+        let isAnimating = false; 
+        let pendingBoardState = null; 
+        let pendingGameEndData = null; 
+        
+        let unsubscribeQueue = null;
+        let unsubscribeGame = null;
+        let unsubscribeMyTicket = null;
+
+        const nicknameInput = document.getElementById('nickname-input');
+        const nicknameSection = document.getElementById('nickname-section');
+        const joinBtn = document.getElementById('join-queue-btn');
+        const gameButtonsDiv = document.getElementById('game-buttons');
+        const aiBtn = document.getElementById('force-ai-btn');
+        const start2pBtn = document.getElementById('start-2p-ai-btn');
+        
+        const queueListEl = document.getElementById('queue-list');
+        const queueCountEl = document.getElementById('queue-count');
+        const boardElement = document.getElementById('game-board');
+        const timerDisplay = document.getElementById('timer-display');
+        const timerDisplayMobile = document.getElementById('timer-display-mobile');
+        const scoresSection = document.getElementById('scores-section');
+        const queueSection = document.getElementById('queue-section');
+        const scoreList = document.getElementById('score-list');
+        
+        const desktopTimerContainer = document.getElementById('desktop-timer-container');
+        const mobileTimerContainer = document.getElementById('mobile-timer-container');
+        
+        const myNicknameDisplay = document.getElementById('my-nickname-display');
+        const myColorDisplay = document.getElementById('my-color-display'); 
+        const myNicknameMobile = document.getElementById('my-nickname-mobile'); 
+
+        const overwriteUIDisplay = document.getElementById('overwrite-ui-display');
+        const overwriteUIContainer = document.getElementById('overwrite-ui-container');
+
+        let currentBoardState = [];
+        let selectedCell = null; 
+        let isResolving = false;
+        let localTimerInterval = null;
+        let lastTimerValue = ""; 
+
+        // Track last game mode for Restart logic ('AI' or 'PVP')
+        let lastGameMode = null; 
+
+        async function init() {
+            // Initialize with stable version (10.12.2)
+            app = initializeApp(firebaseConfig);
+            db = getFirestore(app);
+            auth = getAuth(app);
+            
+            try {
+                const credential = await signInAnonymously(auth);
+                // Immediately set userId to avoid race condition
+                userId = credential.user.uid; 
+                console.log("Logged in as:", userId);
+            } catch (error) {
+                console.error("Auth failed:", error);
+            }
+            
+            // Backup listener
+            onAuthStateChanged(auth, (user) => {
+                if (user && !userId) userId = user.uid;
+            });
+
+            mobileTimerContainer.classList.add('hidden');
+            overwriteUIContainer.classList.add('hidden');
+        }
+        window.onload = init;
+
+        // --- 닉네임 입력 및 Join 로직 ---
+        nicknameInput.addEventListener('input', (e) => {
+            // Ensure button enables when text exists
+            joinBtn.disabled = e.target.value.trim().length === 0;
+            if(window.SoundManager) window.SoundManager.resetActivityTimer();
+        });
+
+        async function performJoinQueue() {
+            if (!userId) {
+                // If userId is missing, try to fetch current user
+                if (auth.currentUser) {
+                    userId = auth.currentUser.uid;
+                } else {
+                    alert("Network initializing... Please try again in a moment.");
+                    return;
+                }
+            }
+            
+            if(window.SoundManager) window.SoundManager.init();
+            if(window.SoundManager) window.SoundManager.resetActivityTimer();
+
+            nicknameSection.classList.add('hidden'); 
+            gameButtonsDiv.classList.remove('hidden'); 
+            
+            myNicknameDisplay.textContent = myNickname;
+            myNicknameMobile.textContent = myNickname; 
+
+            joinBtn.textContent = "SEARCHING...";
+            joinBtn.disabled = true;
+            nicknameInput.disabled = true;
+
+            try {
+                const queueRef = collection(db, 'artifacts', appId, 'public', 'data', 'queue');
+                const ticketRef = doc(queueRef, userId);
+                await setDoc(ticketRef, { 
+                    userId: userId, 
+                    nickname: myNickname,
+                    joinedAt: serverTimestamp(), 
+                    matchId: null 
+                });
+                queueDocId = userId;
+                watchMyTicket(ticketRef);
+                watchQueueList(); 
+            } catch (e) {
+                console.error(e);
+                alert("Connection Error. Please refresh.");
+                resetUI();
+            }
+        }
+
+        joinBtn.addEventListener('click', async () => {
+            const val = nicknameInput.value.trim();
+            if(!val) return;
+            myNickname = val.toUpperCase().slice(0, 10);
+            await performJoinQueue();
+        });
+
+        function watchMyTicket(docRef) {
+            unsubscribeMyTicket = onSnapshot(docRef, (docSnap) => {
+                if (!docSnap.exists()) return;
+                const data = docSnap.data();
+                if (data.matchId) {
+                    lastGameMode = 'PVP'; // Match found from queue
+                    enterGame(data.matchId);
+                }
+            });
+        }
+
+        function watchQueueList() {
+            const queueRef = collection(db, 'artifacts', appId, 'public', 'data', 'queue');
+            const q = query(queueRef, orderBy('joinedAt', 'asc'));
+            unsubscribeQueue = onSnapshot(q, (snapshot) => {
+                const docs = snapshot.docs;
+                currentQueueDocs = docs;
+                renderQueueList(docs);
+                if (queueDocId && docs.length >= 3) {
+                    const top3 = docs.slice(0, 3);
+                    if (top3[2].id === userId) createMatchedGame(top3);
+                }
+                if (queueDocId && docs.length >= 1) { 
+                    aiBtn.classList.remove('hidden');
+                } else {
+                    aiBtn.classList.add('hidden');
+                }
+                if (queueDocId && docs.length === 2) {
+                    start2pBtn.classList.remove('hidden');
+                } else {
+                    start2pBtn.classList.add('hidden');
+                }
+            });
+        }
+
+        async function createMatchedGame(usersDocs) { await initGameWithPlayers(usersDocs); }
+
+        start2pBtn.addEventListener('click', async () => {
+            if(window.SoundManager) window.SoundManager.init();
+            if(window.SoundManager) window.SoundManager.resetActivityTimer(); 
+            if (!queueDocId || currentQueueDocs.length !== 2) return;
+            const top2 = currentQueueDocs.slice(0, 2);
+            await initGameWithPlayers(top2, true); 
+        });
+
+        async function initGameWithPlayers(usersDocs, fillAI = false) {
+            const gamesRef = collection(db, 'artifacts', appId, 'public', 'data', 'games');
+            const newGameRef = doc(gamesRef);
+            const newGameId = newGameRef.id;
+            const playersData = {};
+            const playerOrder = [];
+            
+            usersDocs.forEach((d, idx) => {
+                const uid = d.data().userId;
+                const nick = d.data().nickname || "Unknown";
+                playersData[uid] = { 
+                    nickname: nick, color: COLORS[idx], isAI: false, score: 0, overwrites: MAX_OVERWRITES, lastMove: null 
+                };
+                playerOrder.push(uid);
+            });
+
+            if (fillAI && usersDocs.length < 3) {
+                const aiCount = 3 - usersDocs.length;
+                for(let i=0; i<aiCount; i++) {
+                    const colorIndex = usersDocs.length + i;
+                    const aiId = `AI_CPU_${i+1}`;
+                    playersData[aiId] = { 
+                        nickname: "AI BOT", color: COLORS[colorIndex], isAI: true, score: 0, overwrites: MAX_OVERWRITES, lastMove: null 
+                    };
+                    playerOrder.push(aiId);
+                }
+                lastGameMode = 'PVP_AI'; // Mixed mode
+            } else {
+                lastGameMode = 'PVP';
+            }
+
+            const initialBoard = Array(BOARD_SIZE).fill(0).map(() => Array(BOARD_SIZE).fill(''));
+            const deadLine = Date.now() + FIRST_TURN_DURATION_MS + NETWORK_BUFFER_MS;
+
+            await runTransaction(db, async (transaction) => {
+                transaction.set(newGameRef, {
+                    status: 'playing', turn: 1, turnDeadline: deadLine,
+                    board: JSON.stringify(initialBoard), players: playersData,
+                    playerOrder: playerOrder, hostId: userId, createdAt: serverTimestamp(),
+                    lastRoundEvents: "[]"
+                });
+                for (const d of usersDocs) {
+                    const qRef = doc(db, 'artifacts', appId, 'public', 'data', 'queue', d.id);
+                    transaction.update(qRef, { matchId: newGameId });
+                }
+            });
+        }
+
+        async function startSoloAiGame() {
+            if(window.SoundManager) window.SoundManager.init();
+            if(window.SoundManager) window.SoundManager.resetActivityTimer(); 
+            // If we are in queue, leave it first
+            if (queueDocId) await leaveQueue();
+
+            lastGameMode = 'AI';
+            
+            const newGameRef = doc(collection(db, 'artifacts', appId, 'public', 'data', 'games'));
+            const initialBoard = Array(BOARD_SIZE).fill(0).map(() => Array(BOARD_SIZE).fill(''));
+            const playersData = {
+                [userId]: { nickname: myNickname, color: 'R', isAI: false, score: 0, overwrites: MAX_OVERWRITES, lastMove: null },
+                'AI_Y': { nickname: "AI YELLOW", color: 'Y', isAI: true, score: 0, overwrites: MAX_OVERWRITES, lastMove: null }, 
+                'AI_B': { nickname: "AI BLUE", color: 'B', isAI: true, score: 0, overwrites: MAX_OVERWRITES, lastMove: null } 
+            };
+            const deadLine = Date.now() + FIRST_TURN_DURATION_MS + NETWORK_BUFFER_MS;
+            await setDoc(newGameRef, {
+                status: 'playing', turn: 1, turnDeadline: deadLine,
+                board: JSON.stringify(initialBoard), players: playersData,
+                playerOrder: [userId, 'AI_Y', 'AI_B'], hostId: userId, createdAt: serverTimestamp(),
+                lastRoundEvents: "[]"
+            });
+            enterGame(newGameRef.id);
+        }
+
+        aiBtn.addEventListener('click', async () => {
+             await startSoloAiGame();
+        });
+
+        async function leaveQueue() {
+            if (unsubscribeQueue) { unsubscribeQueue(); unsubscribeQueue = null; }
+            if (unsubscribeMyTicket) { unsubscribeMyTicket(); unsubscribeMyTicket = null; }
+            if (queueDocId) {
+                await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'queue', queueDocId));
+                queueDocId = null;
+            }
+        }
+
+        function resetLocalStateAndUI() {
+            if (localTimerInterval) clearInterval(localTimerInterval);
+            if (unsubscribeQueue) { unsubscribeQueue(); unsubscribeQueue = null; }
+            if (unsubscribeGame) { unsubscribeGame(); unsubscribeGame = null; }
+            if (unsubscribeMyTicket) { unsubscribeMyTicket(); unsubscribeMyTicket = null; }
+
+            // NOTE: We keep myNickname and userId for quick restart
+            // But if triggered by timeout, user is effectively "logged out" to main screen
+            queueDocId = null;
+            gameId = null;
+            myColor = null;
+            myOverwritesLeft = MAX_OVERWRITES;
+            lastProcessedTurn = 0;
+            isAnimating = false;
+            pendingBoardState = null;
+            pendingGameEndData = null;
+            selectedCell = null;
+            isResolving = false;
+            lastTimerValue = "";
+            
+            nicknameSection.classList.remove('hidden');
+            joinBtn.textContent = "Find Match";
+            joinBtn.disabled = true;
+            nicknameInput.disabled = false;
+            nicknameInput.value = "";
+            gameButtonsDiv.classList.add('hidden');
+
+            myNicknameDisplay.textContent = ''; 
+            myNicknameMobile.textContent = '-';
+            myNicknameMobile.style.color = '#1a1a1a';
+            
+            myColorDisplay.textContent = 'SPECTATOR';
+
+            overwriteUIDisplay.innerHTML = '';
+            overwriteUIContainer.classList.add('hidden');
+            
+            scoresSection.classList.add('hidden');
+            queueSection.classList.remove('hidden');
+            
+            mobileTimerContainer.classList.add('hidden');
+
+            updateTimerDisplay("--");
+
+            renderQueueList([]);
+            scoreList.innerHTML = '<li class="text-gray-300 text-xs uppercase tracking-widest py-2">Game not started</li>';
+            
+            // Re-render empty board 
+            boardElement.innerHTML = `<div class="col-span-5 flex items-center justify-center h-full text-white text-xl font-bold tracking-widest uppercase bg-waiting-rainbow shadow-inner">
+                        Waiting for match
+                    </div>
+                    <div id="message-modal" class="hidden absolute inset-0 z-50 flex items-center justify-center backdrop-blur-[2px] bg-black/30">
+                        <div class="modal-content bg-white/20 border border-white/40 p-6 w-[80%] max-w-sm text-center backdrop-blur-md shadow-[0_8px_32px_0_rgba(31,38,135,0.37)] rounded-xl relative">
+                            <button onclick="window.closeModal()" class="absolute top-2 right-3 text-white text-2xl font-bold p-1 leading-none hover:text-gray-300">&times;</button>
+                            <h3 id="modal-title" class="text-2xl font-black uppercase mb-3 tracking-tighter text-white drop-shadow-md">TITLE</h3>
+                            <p id="modal-content" class="text-white mb-6 font-bold whitespace-pre-line leading-relaxed text-sm drop-shadow-sm">Content</p>
+                            
+                            <button id="modal-play-again" class="w-full bg-black hover:bg-gray-800 text-white border border-white/20 font-black py-4 text-sm tracking-[0.2em] uppercase transition-all hover:scale-105 rounded-lg shadow-xl mb-3">
+                                PLAY AGAIN
+                            </button>
+                        </div>
+                    </div>`;
+             
+             // Re-attach Play Again Listener because we nuked the HTML
+             setupPlayAgainListener();
+
+            if(window.SoundManager.activityTimer) clearTimeout(window.SoundManager.activityTimer);
+        }
+
+        async function enterGame(id) {
+            gameId = id;
+            await leaveQueue();
+            
+            nicknameSection.classList.add('hidden');
+            gameButtonsDiv.classList.remove('hidden');
+            
+            unsubscribeGame = onSnapshot(doc(db, 'artifacts', appId, 'public', 'data', 'games', gameId), (docSnap) => {
+                if(!docSnap.exists()) {
+                    if(localTimerInterval) clearInterval(localTimerInterval);
+                    resetLocalStateAndUI();
+                    return;
+                }
+                handleGameUpdate(docSnap.data());
+            });
+            
+            queueSection.classList.add('hidden');
+            scoresSection.classList.remove('hidden');
+            
+            mobileTimerContainer.classList.remove('hidden'); 
+        }
+
+        function renderOverwriteUI(overwritesLeft) {
+            overwriteUIDisplay.innerHTML = '';
+            for (let i = 0; i < MAX_OVERWRITES; i++) {
+                const box = document.createElement('div');
+                box.className = 'overwrite-box';
+                if (i < overwritesLeft) {
+                    box.classList.add('bg-waiting-rainbow');
+                } else {
+                    box.style.backgroundColor = '#d1d5db'; 
+                }
+                overwriteUIDisplay.appendChild(box);
+            }
+            overwriteUIContainer.classList.remove('hidden');
+        }
+
+        function handleGameUpdate(gameData) {
+            if(window.SoundManager) window.SoundManager.resetActivityTimer();
+            
+            queueSection.classList.add('hidden');
+            scoresSection.classList.remove('hidden');
+            mobileTimerContainer.classList.remove('hidden');
+
+            const myData = gameData.players[userId];
+            if (myData) {
+                myColor = myData.color;
+                myOverwritesLeft = myData.overwrites;
+                const cInfo = COLOR_MAP[myColor];
+                
+                myNicknameDisplay.textContent = myData.nickname;
+                myNicknameMobile.textContent = myData.nickname;
+                myNicknameMobile.style.color = cInfo.html_color;
+                
+                myColorDisplay.textContent = cInfo.label;
+                renderOverwriteUI(myOverwritesLeft);
+            } else {
+                 myNicknameMobile.style.color = '#1a1a1a';
+                 myColorDisplay.textContent = 'SPECTATOR';
+                 overwriteUIContainer.classList.add('hidden');
+            }
+            
+            aiBtn.classList.add('hidden');
+            start2pBtn.classList.add('hidden');
+            
+            if (gameData.status === 'finished') {
+                if (localTimerInterval) clearInterval(localTimerInterval);
+                updateTimerDisplay("0");
+                
+                if (gameData.turn > lastProcessedTurn) {
+                    pendingGameEndData = gameData;
+                } else if (!isAnimating) {
+                    showWinner(gameData.players);
+                }
+            }
+
+            if (gameData.turn > lastProcessedTurn) {
+                if (gameData.lastRoundEvents) {
+                    const events = JSON.parse(gameData.lastRoundEvents);
+                    pendingBoardState = JSON.parse(gameData.board);
+                    isAnimating = true;
+                    triggerSequentialAnimations(events, gameData);
+                } else {
+                    currentBoardState = JSON.parse(gameData.board);
+                    renderBoard(currentBoardState, gameData);
+                }
+                lastProcessedTurn = gameData.turn;
+            } else if (!isAnimating) {
+                currentBoardState = JSON.parse(gameData.board);
+                renderBoard(currentBoardState, gameData);
+            }
+
+            renderScoreboard(gameData.players);
+
+            if (gameData.status === 'playing') {
+                runClientTimer(gameData.turnDeadline, gameData);
+            }
+        }
+
+        function triggerSequentialAnimations(events, gameData) {
+            if (!events || events.length === 0) {
+                isAnimating = false;
+                currentBoardState = pendingBoardState;
+                renderBoard(currentBoardState, gameData);
+                
+                if (pendingGameEndData) {
+                    setTimeout(() => {
+                        showWinner(pendingGameEndData.players);
+                        pendingGameEndData = null;
+                    }, 1000); 
+                }
+                return;
+            }
+            
+            let accumulatedDelay = 0;
+
+            events.forEach((ev, index) => {
+                const cellIdx = (ev.r * BOARD_SIZE) + ev.c;
+                let duration = 1000;
+                if(ev.type === 'flip') duration = 500;
+                else if (ev.type === 'conflict') {
+                    duration = (ev.colors.length * 1000) + 1000; 
+                }
+
+                setTimeout(() => {
+                    const cells = boardElement.querySelectorAll('.cell');
+                    if (cells[cellIdx]) {
+                        const cell = cells[cellIdx];
+                        cell.style.animation = 'none';
+                        cell.offsetHeight; 
+                        cell.style.animation = null; 
+
+                        if (ev.type === 'conflict') {
+                            if(window.SoundManager) window.SoundManager.playConflict();
+                            const sortOrder = ['R', 'Y', 'B'];
+                            const colors = (ev.colors || []).sort((a, b) => sortOrder.indexOf(a) - sortOrder.indexOf(b));
+                            
+                            colors.forEach((cCode, i) => {
+                                setTimeout(() => {
+                                    if(window.SoundManager) window.SoundManager.playGlass(); 
+                                    cell.classList.remove('bg-white', 'bg-player-red', 'bg-player-yellow', 'bg-player-blue');
+                                    cell.classList.add(COLOR_MAP[cCode].code);
+                                    cell.style.animation = 'shine-pulse 1s forwards'; 
+                                }, i * 1000);
+                            });
+
+                            setTimeout(() => {
+                                cell.style.animation = 'vanish-anim 1s forwards';
+                            }, colors.length * 1000);
+
+                        } else if (ev.type === 'success') {
+                            if(window.SoundManager) window.SoundManager.playGlass();
+                            cell.classList.remove('bg-white');
+                            cell.classList.add(COLOR_MAP[ev.color].code);
+                            cell.style.animation = 'shine-pulse 1s forwards';
+                        } else if (ev.type === 'flip') {
+                            if(window.SoundManager) window.SoundManager.playGlass();
+                            COLORS.forEach(c => cell.classList.remove(COLOR_MAP[c].code));
+                            cell.classList.add(COLOR_MAP[ev.color].code);
+                            cell.style.animation = 'flip-anim 0.5s forwards';
+                        }
+                    }
+                }, accumulatedDelay);
+
+                accumulatedDelay += duration;
+            });
+
+            setTimeout(() => {
+                isAnimating = false;
+                currentBoardState = pendingBoardState;
+                renderBoard(currentBoardState, gameData);
+
+                if (pendingGameEndData) {
+                    setTimeout(() => {
+                        showWinner(pendingGameEndData.players);
+                        pendingGameEndData = null;
+                    }, 1000); 
+                }
+            }, accumulatedDelay);
+        }
+
+        function updateTimerDisplay(text) {
+            const displayText = isAnimating ? "0" : text;
+            if(lastTimerValue !== displayText) {
+                if(window.SoundManager && displayText !== "0" && displayText !== "--") {
+                    window.SoundManager.playTick();
+                }
+                lastTimerValue = displayText;
+            }
+            timerDisplay.textContent = displayText;
+            document.getElementById('timer-display-mobile').textContent = displayText;
+            
+            if(displayText === "0") {
+                 const cls = "font-mono font-bold leading-none text-gray-300";
+                 timerDisplay.className = "text-5xl " + cls;
+                 document.getElementById('timer-display-mobile').className = "text-4xl " + cls;
+            } else {
+                const val = parseInt(displayText);
+                let colorClass = "text-black";
+                if(val <= 2) colorClass = "text-red-600";
+                const cls = `font-mono font-bold leading-none ${colorClass}`;
+                 timerDisplay.className = "text-5xl " + cls;
+                 document.getElementById('timer-display-mobile').className = "text-4xl " + cls;
+            }
+        }
+
+        function runClientTimer(deadline, gameData) {
+            if (localTimerInterval) clearInterval(localTimerInterval);
+            const updateTimer = () => {
+                if (isAnimating) {
+                    updateTimerDisplay("0");
+                    return;
+                }
+                const now = Date.now();
+                const diff = deadline - now;
+                const secondsLeft = Math.ceil(diff / 1000);
+                const displaySeconds = Math.max(0, secondsLeft - 1);
+                
+                if (secondsLeft > 0) {
+                    updateTimerDisplay(displaySeconds.toString());
+                } else {
+                    updateTimerDisplay("0");
+                    if (userId === gameData.hostId && !isResolving) {
+                        if (Date.now() > deadline) resolveTurn(gameData);
+                    }
+                }
+            };
+            updateTimer();
+            localTimerInterval = setInterval(updateTimer, 100);
+        }
+
+        // --- NEW STRATEGIC AI LOGIC (CONSERVATIVE) ---
+        function getStrategicAIMove(board, playerObj, color) {
+            let possibleMoves = [];
+            const emptyCells = [];
+            const enemyCells = [];
+            
+            // 1. Identify candidates
+            for(let r=0; r<BOARD_SIZE; r++) {
+                for(let c=0; c<BOARD_SIZE; c++) {
+                    if (board[r][c] === '') emptyCells.push({r, c});
+                    else if (board[r][c] !== color) enemyCells.push({r, c});
+                }
+            }
+
+            // 2. Evaluate Normal Moves (Preferred with Bonus)
+            emptyCells.forEach(cell => {
+                const flips = applyOthello(board, cell.r, cell.c, color);
+                possibleMoves.push({
+                    r: cell.r, c: cell.c, isOverwrite: false,
+                    flips: flips.length,
+                    score: (flips.length * 10) + 20 // Base score bonus for Normal Move to prefer saving breakers
+                });
+            });
+
+            // 3. Evaluate Overwrite Moves (only if charges left)
+            if (playerObj.overwrites > 0) {
+                enemyCells.forEach(cell => {
+                    const flips = applyOthello(board, cell.r, cell.c, color);
+                    
+                    // --- STRATEGY: CONSERVATION ---
+                    let allowed = false;
+                    
+                    // Late Game (Last ~8 cells): Go crazy to use them up
+                    if (emptyCells.length <= 8) {
+                        allowed = true;
+                    } 
+                    // Mid Game (9-16 cells): Only if good value (flip 2+)
+                    else if (emptyCells.length <= 16) {
+                        if (flips.length >= 2) allowed = true;
+                    }
+                    // Early Game (17+ cells): Only if huge value (flip 3+)
+                    else {
+                        if (flips.length >= 3) allowed = true;
+                    }
+
+                    if (allowed) {
+                        // Increasing urgency as space runs out
+                        const urgencyBonus = (25 - emptyCells.length) * 1.5; 
+                        let score = (flips.length * 12) + urgencyBonus; 
+                        
+                        possibleMoves.push({
+                            r: cell.r, c: cell.c, isOverwrite: true,
+                            flips: flips.length,
+                            score: score
+                        });
+                    }
+                });
+            }
+
+            // 4. Sort and Pick
+            possibleMoves.sort((a, b) => b.score - a.score);
+            
+            if (possibleMoves.length > 0) {
+                 const bestScore = possibleMoves[0].score;
+                 const topMoves = possibleMoves.filter(m => m.score >= bestScore - 5);
+                 return topMoves[Math.floor(Math.random() * topMoves.length)];
+            }
+            
+            return null;
+        }
+
+        async function resolveTurn(gameData) {
+            if (isResolving) return;
+            isResolving = true;
+            let board = JSON.parse(gameData.board).map(r => [...r]);
+            const players = gameData.players;
+            let moves = [];
+
+            for (const pid in players) {
+                const p = players[pid];
+                if (p.isAI) {
+                    // Use new Strategic Logic
+                    const aiMove = getStrategicAIMove(board, p, p.color);
+                    if (aiMove) {
+                         moves.push({ id: pid, color: p.color, r: aiMove.r, c: aiMove.c, isOverwrite: aiMove.isOverwrite });
+                    } else {
+                        // Fallback (shouldn't happen often)
+                        const rand = getRandomMove(board);
+                        if(rand) moves.push({ id: pid, color: p.color, r: rand.r, c: rand.c, isOverwrite: false });
+                    }
+                } else if (p.lastMove) {
+                    moves.push({ id: pid, color: p.color, r: p.lastMove.r, c: p.lastMove.c, isOverwrite: p.lastMove.isOverwrite });
+                }
+            }
+
+            // Group moves by position to detect collisions specifically
+            const movesAtPos = {};
+            moves.forEach(m => {
+                const key = `${m.r},${m.c}`;
+                if(!movesAtPos[key]) movesAtPos[key] = [];
+                movesAtPos[key].push(m);
+            });
+            
+            const roundEvents = [];
+            let totalAnimTime = 0;
+
+            for (const key in movesAtPos) {
+                const cellMoves = movesAtPos[key];
+                const [r, c] = key.split(',').map(Number);
+
+                if (cellMoves.length > 1) {
+                    const colors = cellMoves.map(m => m.color);
+                    roundEvents.push({ r, c, type: 'conflict', colors: colors });
+                    totalAnimTime += (colors.length * 1000) + 1000;
+                    board[r][c] = ''; 
+                }
+            }
+
+            const overwriteConsumers = new Set();
+            
+            const validMoves = moves.filter(m => {
+                if (movesAtPos[`${m.r},${m.c}`].length > 1) return false; 
+                const currentOwner = board[m.r][m.c];
+                if (m.isOverwrite) {
+                    if (currentOwner === '' || currentOwner === m.color) return false; 
+                    if (players[m.id].overwrites <= 0) return false; 
+                    return true;
+                } else {
+                    return currentOwner === '';
+                }
+            });
+
+            validMoves.forEach(m => {
+                board[m.r][m.c] = m.color;
+                roundEvents.push({ r: m.r, c: m.c, color: m.color, type: 'success' });
+                totalAnimTime += 1000; 
+
+                if(m.isOverwrite) overwriteConsumers.add(m.id);
+                
+                const flips = applyOthello(board, m.r, m.c, m.color);
+                flips.forEach(f => {
+                    board[f.r][f.c] = m.color; 
+                    roundEvents.push({ r: f.r, c: f.c, color: m.color, type: 'flip' });
+                    totalAnimTime += 500; 
+                });
+            });
+
+            let newScores = {};
+            let finalFilled = 0;
+            for(let r=0; r<BOARD_SIZE; r++) {
+                for(let c=0; c<BOARD_SIZE; c++) {
+                    const cell = board[r][c];
+                    if(cell) { newScores[cell] = (newScores[cell] || 0) + 1; finalFilled++; }
+                }
+            }
+
+            const updatedPlayers = {};
+            for (const pid in players) {
+                let newOverwrites = players[pid].overwrites;
+                if (overwriteConsumers.has(pid)) newOverwrites--;
+                updatedPlayers[pid] = { 
+                    ...players[pid], lastMove: null, score: newScores[players[pid].color] || 0, overwrites: newOverwrites
+                };
+            }
+
+            const totalCells = BOARD_SIZE * BOARD_SIZE;
+            const isEnd = finalFilled >= (totalCells - 1); 
+            
+            const nextDeadline = Date.now() + TURN_DURATION_MS + NETWORK_BUFFER_MS + totalAnimTime + 500;
+
+            await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'games', gameId), {
+                board: JSON.stringify(board), players: updatedPlayers,
+                turn: gameData.turn + 1, turnDeadline: nextDeadline, status: isEnd ? 'finished' : 'playing',
+                lastRoundEvents: JSON.stringify(roundEvents)
+            });
+
+            selectedCell = null;
+            isResolving = false;
+        }
+
+        window.handleCellClick = async (r, c) => {
+            if (!gameId || !myColor || isResolving || isAnimating) return;
+            if(window.SoundManager) window.SoundManager.resetActivityTimer();
+
+            const cellColor = currentBoardState[r][c];
+            let isOverwrite = false;
+            if (cellColor !== '') {
+                if (cellColor === myColor) return; 
+                if (myOverwritesLeft <= 0) return; 
+                isOverwrite = true;
+            }
+            
+            selectedCell = { r, c, isOverwrite };
+            renderBoard(currentBoardState, { status: 'playing' }); 
+            try {
+                await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'games', gameId), {
+                    [`players.${userId}.lastMove`]: { r, c, isOverwrite }
+                });
+            } catch (e) {
+                console.error("Send failed", e);
+                selectedCell = null;
+                renderBoard(currentBoardState, { status: 'playing' });
+            }
+        };
+
+        function renderBoard(board, gameData) {
+            const cells = boardElement.querySelectorAll('.cell');
+            cells.forEach(el => el.remove());
+            const waitingScreen = boardElement.querySelector('.col-span-5');
+            if(waitingScreen) {
+                if(gameData.status === 'playing') waitingScreen.classList.add('hidden');
+                else waitingScreen.classList.remove('hidden');
+            }
+            
+            const frag = document.createDocumentFragment();
+            for (let r = 0; r < BOARD_SIZE; r++) {
+                for (let c = 0; c < BOARD_SIZE; c++) {
+                    const cellVal = board[r][c];
+                    const div = document.createElement('div');
+                    div.className = `cell w-full h-full flex items-center justify-center text-white font-bold text-lg`;
+                    if (cellVal) {
+                        div.className += ` ${COLOR_MAP[cellVal].code} occupied-immutable`;
+                        if (gameData.status === 'playing' && myColor && cellVal !== myColor && myOverwritesLeft > 0) div.style.cursor = "crosshair";
+                    } else {
+                        div.classList.add('bg-white');
+                    }
+                    if (gameData.status === 'playing' && myColor && !isAnimating) {
+                        if (selectedCell && selectedCell.r === r && selectedCell.c === c) {
+                            div.className = `cell w-full h-full flex items-center justify-center text-white font-bold text-lg ${COLOR_MAP[myColor].code}`;
+                            if (selectedCell.isOverwrite) {
+                                div.classList.add('breaker-shine', 'ring-4', 'ring-inset', 'ring-black');
+                            } else {
+                                div.classList.add('ring-4', 'ring-inset', 'ring-black/10');
+                            }
+                        } else {
+                            const isEnemy = cellVal && cellVal !== myColor;
+                            if (!cellVal || (isEnemy && myOverwritesLeft > 0)) div.onclick = () => window.handleCellClick(r, c);
+                        }
+                    }
+                    frag.appendChild(div);
+                }
+            }
+            boardElement.insertBefore(frag, boardElement.firstChild);
+        }
+
+        function renderQueueList(docs) {
+            queueCountEl.textContent = docs.length;
+            queueListEl.innerHTML = '';
+            if (docs.length === 0) {
+                queueListEl.innerHTML = '<p class="text-gray-300 text-xs text-center py-8 uppercase tracking-widest">No players waiting</p>';
+                return;
+            }
+            
+            docs.forEach(d => {
+                const isMe = d.id === userId;
+                const nick = d.data().nickname || "Unknown";
+                const el = document.createElement('div');
+                
+                let bgColor = 'bg-white text-gray-600 border-gray-100';
+                let contentHTML = `<span class="font-bold uppercase">${isMe ? `YOU (${nick})` : nick}</span><span class="text-[10px] uppercase tracking-widest opacity-70">WAITING</span>`;
+
+                if (isMe && myColor) {
+                    const cInfo = COLOR_MAP[myColor];
+                    const baseColor = cInfo.html_color.match(/\((.*?)\)/)[1].split(', ').map(c => parseInt(c));
+                    const rgbaColor = `rgba(${baseColor[0]}, ${baseColor[1]}, ${baseColor[2]}, 0.9)`;
+                    bgColor = `text-white border-black shadow-md`;
+                    el.style.backgroundColor = rgbaColor;
+                } else if (isMe) {
+                    bgColor = 'bg-black text-white border-black';
+                }
+
+                el.className = `queue-item p-3 border text-xs flex justify-between items-center ${bgColor}`;
+                el.innerHTML = contentHTML;
+                queueListEl.appendChild(el);
+            });
+        }
+
+        function renderScoreboard(players) {
+            scoreList.innerHTML = '';
+            COLORS.forEach(colorCode => {
+                const playerEntry = Object.entries(players).find(([uid, p]) => p.color === colorCode);
+                let score = 0; let label = "EMPTY"; let isMe = false; let overwrites = 0;
+                if (playerEntry) {
+                    const [uid, p] = playerEntry; score = p.score; overwrites = p.overwrites;
+                    if (p.isAI) label = p.nickname;
+                    else if (uid === userId) { label = p.nickname + " (YOU)"; isMe = true; }
+                    else label = p.nickname;
+                }
+                const li = document.createElement('li');
+                li.className = "flex justify-between items-center p-3 bg-white border border-gray-100 shadow-sm";
+                li.innerHTML = `<div class="flex items-center gap-3"><div class="w-4 h-4 rounded-full ${COLOR_MAP[colorCode].code}"></div><div class="flex flex-col"><span class="text-sm font-bold uppercase tracking-wider ${isMe ? 'text-black' : 'text-gray-600'}">${label}</span>${playerEntry ? `<span class="text-[10px] text-gray-400">BREAKERS: ${overwrites}</span>` : ''}</div></div><span class="font-mono font-black text-xl">${score}</span>`;
+                scoreList.appendChild(li);
+            });
+        }
+        
+        function applyOthello(board, r, c, color) {
+            const dirs = [[-1,0],[1,0],[0,-1],[0,1],[-1,-1],[-1,1],[1,-1],[1,1]];
+            let flippedCells = [];
+            
+            dirs.forEach(([dr, dc]) => {
+                let nr = r + dr, nc = c + dc, flippable = [];
+                let foundOwnColor = false;
+
+                while(nr>=0 && nr<BOARD_SIZE && nc>=0 && nc<BOARD_SIZE) {
+                    const cellColor = board[nr][nc];
+                    if(cellColor === '') break; 
+                    if(cellColor === color) {
+                        foundOwnColor = true;
+                        break; 
+                    }
+                    flippable.push({r:nr, c:nc});
+                    nr += dr; nc += dc;
+                }
+                if(foundOwnColor) flippedCells = flippedCells.concat(flippable);
+            });
+            return flippedCells;
+        }
+
+        function getRandomMove(board) {
+            let empties = [];
+            for(let r=0; r<BOARD_SIZE; r++) for(let c=0; c<BOARD_SIZE; c++) if(board[r][c] === '') empties.push({r,c});
+            return empties.length ? empties[Math.floor(Math.random()*empties.length)] : null;
+        }
+
+        function showWinner(players) {
+             const winner = Object.values(players).sort((a, b) => b.score - a.score)[0];
+             const myScore = players[userId]?.score || 0;
+             const isWin = players[userId] && winner.color === players[userId].color;
+             const title = isWin ? "VICTORY" : "GAME OVER";
+             const content = `WINNER: ${winner.nickname} (${winner.score})\nYOUR SCORE: ${myScore}`;
+             document.getElementById('modal-title').textContent = title;
+             document.getElementById('modal-content').textContent = content;
+             document.getElementById('message-modal').classList.remove('hidden');
+        }
+
+        window.closeModal = () => {
+             document.getElementById('message-modal').classList.add('hidden');
+        };
+
+        // --- PLAY AGAIN LISTENER SETUP ---
+        function setupPlayAgainListener() {
+            const btn = document.getElementById('modal-play-again');
+            if(btn) {
+                btn.onclick = async () => {
+                     document.getElementById('message-modal').classList.add('hidden');
+                     if(unsubscribeGame) unsubscribeGame();
+                     if(localTimerInterval) clearInterval(localTimerInterval);
+                     boardElement.innerHTML = ''; 
+                     resetLocalStateAndUI();
+                     
+                     if (lastGameMode === 'AI') {
+                        await startSoloAiGame();
+                     } else {
+                        nicknameInput.value = myNickname;
+                        performJoinQueue();
+                     }
+                };
+            }
+        }
+        setupPlayAgainListener();
+
+        function resetUI() {
+            joinBtn.textContent = "Find Match";
+            joinBtn.disabled = true;
+            nicknameInput.disabled = false;
+        }
+    </script>
+</body>
+</html>
