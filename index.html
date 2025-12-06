@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>COLOR - Invite System</title>
+    <title>COLOR - Lobby Split View</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700;900&display=swap');
@@ -21,23 +21,19 @@
             50% { background-position: 100% 50%; }
             100% { background-position: 0% 50%; }
         }
-
         @keyframes popIn {
             0% { transform: scale(0.8); opacity: 0; }
             100% { transform: scale(1); opacity: 1; }
         }
-
         @keyframes shine-pulse {
             0% { transform: scale(0.9); filter: brightness(1.5); box-shadow: 0 0 0 0 rgba(255,255,255,0.7); }
             50% { transform: scale(1.05); filter: brightness(1.2); box-shadow: 0 0 20px 5px rgba(255,255,255,0.5); }
             100% { transform: scale(1); filter: brightness(1); box-shadow: 0 0 0 0 rgba(255,255,255,0); }
         }
-
         @keyframes vanish-anim {
             0% { transform: scale(1); opacity: 1; }
             100% { transform: scale(0.5); opacity: 0; }
         }
-
         @keyframes flip-anim {
             0% { transform: perspective(400px) rotateY(0); }
             50% { transform: perspective(400px) rotateY(90deg); filter: brightness(2); }
@@ -138,7 +134,18 @@
                     
                     <div id="waiting-screen" class="col-span-5 flex flex-col items-center justify-center h-full text-white bg-waiting-rainbow shadow-inner p-4 text-center">
                         <h2 class="text-3xl font-black uppercase tracking-widest mb-2 drop-shadow-md">WAITING FOR PLAYERS</h2>
-                        <p id="room-status-text" class="text-lg font-bold drop-shadow-sm">...</p>
+                        <p id="room-status-text" class="text-lg font-bold drop-shadow-sm mb-6">...</p>
+                        
+                        <div id="host-controls" class="hidden flex flex-col gap-3 w-full max-w-xs animate-[popIn_0.3s_ease-out]">
+                            <button id="host-start-btn" disabled 
+                                    class="w-full bg-black hover:bg-gray-900 text-white border-2 border-white/20 font-black py-4 text-sm tracking-[0.2em] uppercase transition-all shadow-xl disabled:opacity-50 disabled:cursor-not-allowed">
+                                WAITING FOR 3 PLAYERS...
+                            </button>
+                            <button id="host-start-ai-btn" class="hidden w-full bg-yellow-400 hover:bg-yellow-500 text-black border-2 border-black/10 font-black py-3 text-xs tracking-[0.15em] uppercase transition-all shadow-lg">
+                                START WITH AI (2P + 1 BOT)
+                            </button>
+                        </div>
+                        <p id="guest-waiting-msg" class="hidden text-sm font-bold opacity-80 mt-4 uppercase tracking-widest blink">Waiting for Host to start...</p>
                     </div>
 
                     <div id="message-modal" class="hidden absolute inset-0 z-50 flex items-center justify-center backdrop-blur-[2px] bg-black/30">
@@ -199,26 +206,38 @@
             <span id="my-color-display" class="hidden"></span>
         </div>
 
-        <div class="w-full lg:w-96 bg-gray-50 border-t lg:border-t-0 lg:border-l border-gray-200 p-8 flex flex-col gap-8">
+        <div class="w-full lg:w-96 bg-gray-50 border-t lg:border-t-0 lg:border-l border-gray-200 p-8 flex flex-col gap-6 h-screen lg:h-auto overflow-hidden">
             
             <div id="scores-section" class="hidden">
                 <p class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2">SCORES</p>
                 <ul id="score-list" class="space-y-2"></ul>
             </div>
 
-            <div id="right-panel-content" class="flex-1 min-h-[200px] flex flex-col hidden">
-                <div class="flex justify-between items-center mb-4 border-b border-gray-200 pb-2">
-                    <p id="list-title" class="text-[10px] font-bold text-gray-400 uppercase tracking-widest">QUEUE</p>
-                    <span id="list-count" class="text-xs font-bold bg-black text-white px-2 py-0.5">0</span>
-                </div>
+            <div id="lobby-lists-container" class="flex-1 flex flex-col gap-6 h-full hidden min-h-0">
                 
-                <div id="dynamic-list" class="flex-1 overflow-y-auto space-y-2 pr-2">
+                <div class="flex-1 flex flex-col min-h-0 border-b-2 border-gray-200 pb-4">
+                    <div class="flex justify-between items-center mb-2">
+                        <p class="text-[10px] font-bold text-gray-400 uppercase tracking-widest">OPEN ROOMS</p>
+                        <span id="room-list-count" class="text-xs font-bold bg-black text-white px-2 py-0.5">0</span>
                     </div>
+                    <div id="room-list-el" class="flex-1 overflow-y-auto space-y-2 pr-2">
+                        </div>
+                </div>
 
-                <button id="host-invite-btn" class="hidden w-full bg-black text-white mt-4 py-3 text-xs font-bold uppercase tracking-widest hover:bg-gray-800">
-                    INVITE SELECTED
-                </button>
+                <div class="flex-1 flex flex-col min-h-0">
+                    <div class="flex justify-between items-center mb-2">
+                        <p class="text-[10px] font-bold text-gray-400 uppercase tracking-widest">LOBBY PLAYERS</p>
+                        <span id="player-list-count" class="text-xs font-bold bg-black text-white px-2 py-0.5">0</span>
+                    </div>
+                    <div id="player-list-el" class="flex-1 overflow-y-auto space-y-2 pr-2">
+                        </div>
+                    
+                    <button id="host-invite-btn" class="hidden w-full bg-black text-white mt-3 py-3 text-xs font-bold uppercase tracking-widest hover:bg-gray-800 transition-colors">
+                        INVITE SELECTED
+                    </button>
+                </div>
             </div>
+
         </div>
     </div>
 
@@ -249,7 +268,6 @@
                 });
                 window.addEventListener('beforeunload', () => {
                     if (currentRoomId && !gameId) leaveCurrentRoom();
-                    // Also remove from lobby queue
                     if (userId && !currentRoomId) deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'queue', userId));
                 });
             },
@@ -316,7 +334,9 @@
         let pendingBoardState = null; 
         let pendingGameEndData = null; 
         
-        let unsubscribeList = null; // Listens to Rooms or Players
+        // Listeners
+        let unsubscribeRooms = null; 
+        let unsubscribePlayers = null;
         let unsubscribeCurrentRoom = null;
         let unsubscribeGame = null;
         let unsubscribeInvitation = null;
@@ -331,10 +351,12 @@
         const roomTitleInput = document.getElementById('room-title-input');
         const createRoomBtn = document.getElementById('create-room-btn');
         
-        const rightPanelContent = document.getElementById('right-panel-content');
-        const listTitleEl = document.getElementById('list-title');
-        const listCountEl = document.getElementById('list-count');
-        const dynamicListEl = document.getElementById('dynamic-list');
+        // Right Panel (Split View)
+        const lobbyListsContainer = document.getElementById('lobby-lists-container');
+        const roomListCount = document.getElementById('room-list-count');
+        const roomListEl = document.getElementById('room-list-el');
+        const playerListCount = document.getElementById('player-list-count');
+        const playerListEl = document.getElementById('player-list-el');
         const hostInviteBtn = document.getElementById('host-invite-btn');
 
         const boardElement = document.getElementById('game-board');
@@ -349,6 +371,12 @@
         const overwriteUIContainer = document.getElementById('overwrite-ui-container');
         const waitingScreen = document.getElementById('waiting-screen');
         const roomStatusText = document.getElementById('room-status-text');
+
+        // Host Controls
+        const hostControls = document.getElementById('host-controls');
+        const hostStartBtn = document.getElementById('host-start-btn');
+        const hostStartAiBtn = document.getElementById('host-start-ai-btn');
+        const guestWaitingMsg = document.getElementById('guest-waiting-msg');
 
         // Modal Elements
         const inviteModal = document.getElementById('invite-modal');
@@ -412,22 +440,19 @@
             myNickname = val.toUpperCase().slice(0, 10);
             if(window.SoundManager) window.SoundManager.init();
             
-            // Register self in Lobby Queue (so Hosts can see me)
+            // Register self in Queue
             await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'queue', userId), {
-                userId: userId,
-                nickname: myNickname,
-                status: 'idle',
-                joinedAt: serverTimestamp()
+                userId: userId, nickname: myNickname, status: 'idle', joinedAt: serverTimestamp()
             });
 
             enterLobbyMode();
-            watchMyInvitation(); // Start listening for invitations
+            watchMyInvitation(); 
         });
 
         function enterLobbyMode() {
             loginSection.classList.add('hidden');
             lobbySection.classList.remove('hidden');
-            rightPanelContent.classList.remove('hidden');
+            lobbyListsContainer.classList.remove('hidden');
             
             myNicknameDisplay.textContent = myNickname;
             myNicknameMobile.textContent = myNickname; 
@@ -435,13 +460,13 @@
             roomTitleInput.disabled = false;
             createRoomBtn.disabled = true;
             
-            // In Lobby: Show Open Rooms
-            listTitleEl.textContent = "OPEN ROOMS";
-            hostInviteBtn.classList.add('hidden');
+            hostInviteBtn.classList.add('hidden'); // Hidden in lobby, visible when Host
+            
+            // Start watching BOTH lists
             watchRooms();
+            watchLobbyPlayers();
         }
 
-        // --- 2. Invitation Listener ---
         function watchMyInvitation() {
             if (unsubscribeInvitation) return;
             unsubscribeInvitation = onSnapshot(doc(db, 'artifacts', appId, 'public', 'data', 'queue', userId), (snap) => {
@@ -460,14 +485,12 @@
 
             acceptInviteBtn.onclick = async () => {
                 inviteModal.classList.add('hidden');
-                // Clear invitation
                 await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'queue', userId), { invitation: deleteField() });
                 joinRoom(inviteData.roomId);
             };
 
             declineInviteBtn.onclick = async () => {
                 inviteModal.classList.add('hidden');
-                // Clear invitation
                 await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'queue', userId), { invitation: deleteField() });
             };
         }
@@ -483,7 +506,6 @@
             roomTitleInput.disabled = true;
 
             try {
-                // Remove self from Lobby Queue (Hosts aren't idle)
                 await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'queue', userId));
 
                 const roomDoc = await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'rooms'), {
@@ -499,41 +521,38 @@
         });
 
         function enterWaitingRoomAsHost(title) {
-            // UI Switch
             lobbySection.classList.add('hidden');
             waitingScreen.classList.remove('hidden');
             waitingScreen.querySelector('h2').textContent = title;
-            roomStatusText.textContent = "Waiting for players... (1/3)";
             
-            // As Host: Show Waiting Players in Queue Panel
-            listTitleEl.textContent = "WAITING PLAYERS";
+            // Host Controls Visible
+            hostControls.classList.remove('hidden');
+            guestWaitingMsg.classList.add('hidden');
+            
+            // Enable Invites in Player List
             hostInviteBtn.classList.remove('hidden');
             selectedInvitees.clear();
             
-            watchLobbyPlayers(); // Switch right panel to players
+            // Ensure lists are still visible
+            lobbyListsContainer.classList.remove('hidden');
+            
             startLobbyWatchdog();
             watchCurrentRoom();
         }
 
-        // --- 4. Room/Player List Logic ---
-
-        // MODE A: Watch Rooms (For Lobby Users)
+        // --- 4. Room/Player List Logic (Combined) ---
         function watchRooms() {
-            if (unsubscribeList) unsubscribeList();
+            if (unsubscribeRooms) unsubscribeRooms();
             const roomsRef = collection(db, 'artifacts', appId, 'public', 'data', 'rooms');
             const q = query(roomsRef, where('status', '==', 'waiting'), orderBy('createdAt', 'desc'), limit(10));
-            
-            unsubscribeList = onSnapshot(q, (snapshot) => {
-                const docs = snapshot.docs;
-                renderRoomList(docs);
-            });
+            unsubscribeRooms = onSnapshot(q, (snapshot) => { renderRoomList(snapshot.docs); });
         }
 
         function renderRoomList(docs) {
-            listCountEl.textContent = docs.length;
-            dynamicListEl.innerHTML = '';
+            roomListCount.textContent = docs.length;
+            roomListEl.innerHTML = '';
             if (docs.length === 0) {
-                dynamicListEl.innerHTML = '<p class="text-gray-300 text-xs text-center py-8 uppercase tracking-widest">No open rooms</p>';
+                roomListEl.innerHTML = '<p class="text-gray-300 text-xs text-center py-8 uppercase tracking-widest">No open rooms</p>';
                 return;
             }
             docs.forEach(d => {
@@ -553,48 +572,58 @@
                         <button class="bg-black text-white px-4 py-2 text-xs font-bold uppercase tracking-widest hover:bg-gray-800 disabled:opacity-50"
                                 onclick="window.joinRoom('${d.id}')" ${isFull ? 'disabled' : ''}>JOIN</button>
                     </div>`;
-                dynamicListEl.appendChild(el);
+                roomListEl.appendChild(el);
             });
         }
 
-        // MODE B: Watch Players (For Host)
         function watchLobbyPlayers() {
-            if (unsubscribeList) unsubscribeList();
+            if (unsubscribePlayers) unsubscribePlayers();
             const queueRef = collection(db, 'artifacts', appId, 'public', 'data', 'queue');
-            // Show all idle players (except me, but I'm deleted from queue anyway)
             const q = query(queueRef, orderBy('joinedAt', 'desc'), limit(20));
-
-            unsubscribeList = onSnapshot(q, (snapshot) => {
-                const docs = snapshot.docs;
-                renderPlayerInviteList(docs);
-            });
+            unsubscribePlayers = onSnapshot(q, (snapshot) => { renderPlayerList(snapshot.docs); });
         }
 
-        function renderPlayerInviteList(docs) {
-            // Filter out self just in case
+        function renderPlayerList(docs) {
             const players = docs.filter(d => d.id !== userId);
-            listCountEl.textContent = players.length;
-            dynamicListEl.innerHTML = '';
+            playerListCount.textContent = players.length;
+            playerListEl.innerHTML = '';
             
             if (players.length === 0) {
-                dynamicListEl.innerHTML = '<p class="text-gray-300 text-xs text-center py-8 uppercase tracking-widest">No players in lobby</p>';
+                playerListEl.innerHTML = '<p class="text-gray-300 text-xs text-center py-8 uppercase tracking-widest">No players in lobby</p>';
                 return;
             }
 
+            // Determine if I am a Host inside a room
+            const isHostMode = (currentRoomId && !gameId && !hostControls.classList.contains('hidden'));
+
             players.forEach(d => {
                 const data = d.data();
-                const isChecked = selectedInvitees.has(d.id);
-                
                 const el = document.createElement('div');
                 el.className = "list-item p-3 border border-gray-200 bg-white flex justify-between items-center mb-2 shadow-sm";
-                el.innerHTML = `
-                    <div class="flex items-center gap-3">
-                        <input type="checkbox" class="invite-checkbox" ${isChecked ? 'checked' : ''} onchange="window.toggleInvite('${d.id}')">
-                        <span class="font-bold uppercase text-sm">${data.nickname}</span>
-                    </div>
-                    <span class="text-[10px] text-gray-400 tracking-widest">IDLE</span>
-                `;
-                dynamicListEl.appendChild(el);
+                
+                let contentHTML = "";
+                if (isHostMode) {
+                    // Render with checkbox
+                    const isChecked = selectedInvitees.has(d.id);
+                    contentHTML = `
+                        <div class="flex items-center gap-3">
+                            <input type="checkbox" class="invite-checkbox" ${isChecked ? 'checked' : ''} onchange="window.toggleInvite('${d.id}')">
+                            <span class="font-bold uppercase text-sm">${data.nickname}</span>
+                        </div>
+                        <span class="text-[10px] text-gray-400 tracking-widest">IDLE</span>
+                    `;
+                } else {
+                    // Render simple list
+                    contentHTML = `
+                        <div class="flex items-center gap-3">
+                            <span class="font-bold uppercase text-sm">${data.nickname}</span>
+                        </div>
+                        <span class="text-[10px] text-gray-400 tracking-widest">IDLE</span>
+                    `;
+                }
+                
+                el.innerHTML = contentHTML;
+                playerListEl.appendChild(el);
             });
         }
 
@@ -605,44 +634,33 @@
 
         hostInviteBtn.addEventListener('click', async () => {
             if (!currentRoomId || selectedInvitees.size === 0) return;
-            
             hostInviteBtn.textContent = "SENDING...";
             hostInviteBtn.disabled = true;
-
-            const roomRef = doc(db, 'artifacts', appId, 'public', 'data', 'rooms', currentRoomId);
             const roomSnap = await getDocs(query(collection(db, 'artifacts', appId, 'public', 'data', 'rooms'), where('__name__', '==', currentRoomId)));
             const roomData = roomSnap.docs[0].data();
-
             const invitePromises = Array.from(selectedInvitees).map(targetId => {
                 return updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'queue', targetId), {
-                    invitation: {
-                        roomId: currentRoomId,
-                        roomTitle: roomData.title,
-                        hostName: myNickname
-                    }
+                    invitation: { roomId: currentRoomId, roomTitle: roomData.title, hostName: myNickname }
                 });
             });
-
             await Promise.all(invitePromises);
-            
             hostInviteBtn.textContent = "INVITE SENT";
             setTimeout(() => {
                 hostInviteBtn.textContent = "INVITE SELECTED";
                 hostInviteBtn.disabled = false;
                 selectedInvitees.clear();
-                // Rerender to clear checks
-                const container = document.querySelectorAll('.invite-checkbox');
-                container.forEach(c => c.checked = false);
+                // We don't manually clear checkboxes here because re-rendering might handle it, 
+                // but for UX let's leave them. They will clear on next render loop if we clear set.
+                // Actually renderPlayerList checks selectedInvitees.
+                watchLobbyPlayers(); // Re-trigger render
             }, 2000);
         });
 
-        // --- 5. Joining Room ---
+        // --- 5. Joining Room & Status ---
         window.joinRoom = async (roomId) => {
             if (!userId) return;
             try {
-                // Optimistic UI
                 lobbySection.classList.add('hidden');
-                
                 const roomRef = doc(db, 'artifacts', appId, 'public', 'data', 'rooms', roomId);
                 await runTransaction(db, async (transaction) => {
                     const roomDoc = await transaction.get(roomRef);
@@ -651,20 +669,13 @@
                     if (data.players.length >= 3) throw "Room is full!";
                     const newPlayers = [...data.players, { userId: userId, nickname: myNickname }];
                     transaction.update(roomRef, { players: newPlayers });
-                    
-                    // Remove myself from Queue when joined
                     transaction.delete(doc(db, 'artifacts', appId, 'public', 'data', 'queue', userId));
                 });
-
                 currentRoomId = roomId;
                 const roomDoc = await getDocs(query(collection(db, 'artifacts', appId, 'public', 'data', 'rooms'), where('__name__', '==', roomId)));
                 const roomTitle = roomDoc.docs[0]?.data().title || "ROOM";
                 enterWaitingRoomAsGuest(roomTitle);
-
-            } catch (e) {
-                alert(e);
-                resetToLobby();
-            }
+            } catch (e) { alert(e); resetToLobby(); }
         };
 
         function enterWaitingRoomAsGuest(title) {
@@ -673,11 +684,16 @@
             waitingScreen.querySelector('h2').textContent = title;
             roomStatusText.textContent = "Waiting for Host...";
             
-            // Guests still see Rooms (or empty), but definitely not invite list
-            listTitleEl.textContent = "OPEN ROOMS"; 
-            hostInviteBtn.classList.add('hidden');
-            watchRooms(); // Keep watching rooms or show nothing
+            // Host Controls Hidden for Guests
+            hostControls.classList.add('hidden');
+            guestWaitingMsg.classList.remove('hidden');
             
+            hostInviteBtn.classList.add('hidden'); // Guest cannot invite
+            lobbyListsContainer.classList.remove('hidden'); // Guest still sees lists
+            
+            // Refresh player list to remove checkboxes
+            watchLobbyPlayers();
+
             startLobbyWatchdog();
             watchCurrentRoom();
         }
@@ -692,14 +708,37 @@
                 
                 roomStatusText.innerHTML = `PLAYERS (${players.length}/3)<br><span class="text-sm font-normal opacity-80 mt-2 block">${players.map(p => p.nickname).join(', ')}</span>`;
 
-                if (data.matchId) { enterGame(data.matchId); } 
-                else if (players.length === 3 && players[0].userId === userId) {
-                    await startGameAsHost(players);
+                if (data.matchId) { enterGame(data.matchId); return; }
+
+                // Host Controls Update
+                if (data.hostId === userId) {
+                    if (players.length === 3) {
+                        hostStartBtn.textContent = "START GAME";
+                        hostStartBtn.disabled = false;
+                        hostStartBtn.onclick = () => startGameTransaction(players);
+                        hostStartAiBtn.classList.add('hidden');
+                    } else if (players.length === 2) {
+                        hostStartBtn.textContent = "WAITING FOR 3RD...";
+                        hostStartBtn.disabled = true;
+                        hostStartAiBtn.classList.remove('hidden');
+                        hostStartAiBtn.onclick = () => startWithAI(players);
+                    } else {
+                        hostStartBtn.textContent = "WAITING FOR PLAYERS...";
+                        hostStartBtn.disabled = true;
+                        hostStartAiBtn.classList.add('hidden');
+                    }
                 }
             });
         }
 
-        async function startGameAsHost(players) {
+        async function startWithAI(players) {
+            if (gameId) return;
+            const aiPlayer = { userId: 'AI_BOT_' + Date.now(), nickname: 'AI BOT', isAI: true };
+            const finalPlayers = [...players, aiPlayer];
+            await startGameTransaction(finalPlayers);
+        }
+
+        async function startGameTransaction(players) {
             if (gameId) return; 
             const gamesRef = collection(db, 'artifacts', appId, 'public', 'data', 'games');
             const newGameRef = doc(gamesRef);
@@ -708,7 +747,15 @@
             const playersData = {};
             const playerOrder = [];
             players.forEach((p, idx) => {
-                playersData[p.userId] = { nickname: p.nickname, color: COLORS[idx], isAI: false, score: 0, overwrites: MAX_OVERWRITES, lastMove: null };
+                // If it's a generated AI object, use it directly. Otherwise use user data.
+                playersData[p.userId] = { 
+                    nickname: p.nickname, 
+                    color: COLORS[idx], 
+                    isAI: !!p.isAI, 
+                    score: 0, 
+                    overwrites: MAX_OVERWRITES, 
+                    lastMove: null 
+                };
                 playerOrder.push(p.userId);
             });
 
@@ -757,14 +804,12 @@
             currentRoomId = null;
             gameId = null;
             
-            // Register back to Lobby Queue
             setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'queue', userId), {
                 userId: userId, nickname: myNickname, status: 'idle', joinedAt: serverTimestamp()
             });
 
-            // UI Reset
             lobbySection.classList.remove('hidden');
-            rightPanelContent.classList.remove('hidden');
+            lobbyListsContainer.classList.remove('hidden');
             createRoomBtn.textContent = "CREATE ROOM";
             createRoomBtn.disabled = false;
             roomTitleInput.disabled = false;
@@ -773,6 +818,10 @@
             waitingScreen.classList.remove('hidden'); 
             waitingScreen.querySelector('h2').textContent = "LOBBY";
             roomStatusText.textContent = "";
+
+            // Hide controls
+            hostControls.classList.add('hidden');
+            guestWaitingMsg.classList.add('hidden');
 
             scoresSection.classList.add('hidden');
             mobileTimerContainer.classList.add('hidden');
@@ -784,10 +833,9 @@
             document.getElementById('message-modal').classList.add('hidden');
             inviteModal.classList.add('hidden');
             
-            // Switch List back to Room View
-            listTitleEl.textContent = "OPEN ROOMS";
             hostInviteBtn.classList.add('hidden');
             watchRooms();
+            watchLobbyPlayers();
         }
 
         async function enterGame(id) {
@@ -803,6 +851,8 @@
                 handleGameUpdate(docSnap.data());
             });
             waitingScreen.classList.add('hidden'); 
+            // Hide Lobby lists during game
+            lobbyListsContainer.classList.add('hidden');
             scoresSection.classList.remove('hidden');
             mobileTimerContainer.classList.remove('hidden'); 
         }
@@ -990,7 +1040,11 @@
             let moves = [];
             for (const pid in players) {
                 const p = players[pid]; 
-                if (p.lastMove) moves.push({ id: pid, color: p.color, r: p.lastMove.r, c: p.lastMove.c, isOverwrite: p.lastMove.isOverwrite });
+                if (p.isAI) {
+                    const aiMove = getStrategicAIMove(board, p, p.color);
+                    if (aiMove) moves.push({ id: pid, color: p.color, r: aiMove.r, c: aiMove.c, isOverwrite: aiMove.isOverwrite });
+                    else { const rand = getRandomMove(board); if(rand) moves.push({ id: pid, color: p.color, r: rand.r, c: rand.c, isOverwrite: false }); }
+                } else if (p.lastMove) moves.push({ id: pid, color: p.color, r: p.lastMove.r, c: p.lastMove.c, isOverwrite: p.lastMove.isOverwrite });
             }
             const movesAtPos = {};
             moves.forEach(m => { const key = `${m.r},${m.c}`; if(!movesAtPos[key]) movesAtPos[key] = []; movesAtPos[key].push(m); });
@@ -1062,93 +1116,46 @@
             isResolving = false;
         }
 
-        window.handleCellClick = async (r, c) => {
-            if (!gameId || !myColor || isResolving || isAnimating || isMoveCommitted) return;
-            const cellColor = currentBoardState[r][c];
-            let isOverwrite = false;
-            if (cellColor !== '') {
-                if (cellColor === myColor) return; 
-                if (myOverwritesLeft <= 0) return; 
-                isOverwrite = true;
+        function getStrategicAIMove(board, playerObj, color) {
+            let possibleMoves = [];
+            const emptyCells = [];
+            const enemyCells = [];
+            for(let r=0; r<BOARD_SIZE; r++) {
+                for(let c=0; c<BOARD_SIZE; c++) {
+                    if (board[r][c] === '') emptyCells.push({r, c});
+                    else if (board[r][c] !== color) enemyCells.push({r, c});
+                }
             }
-            selectedCell = { r, c, isOverwrite };
-            renderBoard(currentBoardState, { status: 'playing' }); 
-        };
-
-        function renderBoard(board, gameData) {
-            const cells = boardElement.querySelectorAll('.cell');
-            cells.forEach(el => el.remove());
-            const frag = document.createDocumentFragment();
-            for (let r = 0; r < BOARD_SIZE; r++) {
-                for (let c = 0; c < BOARD_SIZE; c++) {
-                    const cellVal = board[r][c];
-                    const div = document.createElement('div');
-                    div.className = `cell w-full h-full flex items-center justify-center text-white font-bold text-lg`;
-                    if (cellVal) {
-                        div.className += ` ${COLOR_MAP[cellVal].code} occupied-immutable`;
-                        if (gameData.status === 'playing' && myColor && cellVal !== myColor && myOverwritesLeft > 0) div.style.cursor = "crosshair";
-                    } else div.classList.add('bg-white');
-                    if (gameData.status === 'playing' && myColor && !isAnimating) {
-                        if (selectedCell && selectedCell.r === r && selectedCell.c === c) {
-                            div.className = `cell w-full h-full flex items-center justify-center text-white font-bold text-lg ${COLOR_MAP[myColor].code}`;
-                            if (selectedCell.isOverwrite) div.classList.add('breaker-shine', 'ring-4', 'ring-inset', 'ring-black');
-                            else div.classList.add('ring-4', 'ring-inset', 'ring-black/10');
-                        } else {
-                            const isEnemy = cellVal && cellVal !== myColor;
-                            if (!cellVal || (isEnemy && myOverwritesLeft > 0)) div.onclick = () => window.handleCellClick(r, c);
-                        }
+            emptyCells.forEach(cell => {
+                const flips = applyOthello(board, cell.r, cell.c, color);
+                possibleMoves.push({ r: cell.r, c: cell.c, isOverwrite: false, flips: flips.length, score: (flips.length * 10) + 20 });
+            });
+            if (playerObj.overwrites > 0) {
+                enemyCells.forEach(cell => {
+                    const flips = applyOthello(board, cell.r, cell.c, color);
+                    let allowed = false;
+                    if (emptyCells.length <= 8) allowed = true;
+                    else if (emptyCells.length <= 16) { if (flips.length >= 2) allowed = true; }
+                    else { if (flips.length >= 3) allowed = true; }
+                    if (allowed) {
+                        const urgencyBonus = (25 - emptyCells.length) * 1.5; 
+                        let score = (flips.length * 12) + urgencyBonus; 
+                        possibleMoves.push({ r: cell.r, c: cell.c, isOverwrite: true, flips: flips.length, score: score });
                     }
-                    frag.appendChild(div);
-                }
+                });
             }
-            boardElement.insertBefore(frag, boardElement.firstChild);
+            possibleMoves.sort((a, b) => b.score - a.score);
+            if (possibleMoves.length > 0) {
+                 const bestScore = possibleMoves[0].score;
+                 const topMoves = possibleMoves.filter(m => m.score >= bestScore - 5);
+                 return topMoves[Math.floor(Math.random() * topMoves.length)];
+            }
+            return null;
         }
-
-        function renderScoreboard(players) {
-            scoreList.innerHTML = '';
-            COLORS.forEach(colorCode => {
-                const playerEntry = Object.entries(players).find(([uid, p]) => p.color === colorCode);
-                let score = 0; let label = "EMPTY"; let isMe = false; let overwrites = 0;
-                if (playerEntry) {
-                    const [uid, p] = playerEntry; score = p.score; overwrites = p.overwrites;
-                    if (p.isAI) label = p.nickname;
-                    else if (uid === userId) { label = p.nickname + " (YOU)"; isMe = true; }
-                    else label = p.nickname;
-                }
-                const li = document.createElement('li');
-                li.className = "flex justify-between items-center p-3 bg-white border border-gray-100 shadow-sm";
-                li.innerHTML = `<div class="flex items-center gap-3"><div class="w-4 h-4 rounded-full ${COLOR_MAP[colorCode].code}"></div><div class="flex flex-col"><span class="text-sm font-bold uppercase tracking-wider ${isMe ? 'text-black' : 'text-gray-600'}">${label}</span>${playerEntry ? `<span class="text-[10px] text-gray-400">BREAKERS: ${overwrites}</span>` : ''}</div></div><span class="font-mono font-black text-xl">${score}</span>`;
-                scoreList.appendChild(li);
-            });
-        }
-        
-        function applyOthello(board, r, c, color) {
-            const dirs = [[-1,0],[1,0],[0,-1],[0,1],[-1,-1],[-1,1],[1,-1],[1,1]];
-            let flippedCells = [];
-            dirs.forEach(([dr, dc]) => {
-                let nr = r + dr, nc = c + dc, flippable = [];
-                let foundOwnColor = false;
-                while(nr>=0 && nr<BOARD_SIZE && nc>=0 && nc<BOARD_SIZE) {
-                    const cellColor = board[nr][nc];
-                    if(cellColor === '') break; 
-                    if(cellColor === color) { foundOwnColor = true; break; }
-                    flippable.push({r:nr, c:nc});
-                    nr += dr; nc += dc;
-                }
-                if(foundOwnColor) flippedCells = flippedCells.concat(flippable);
-            });
-            return flippedCells;
-        }
-
-        function showWinner(players) {
-             const winner = Object.values(players).sort((a, b) => b.score - a.score)[0];
-             const myScore = players[userId]?.score || 0;
-             const isWin = players[userId] && winner.color === players[userId].color;
-             const title = isWin ? "VICTORY" : "GAME OVER";
-             const content = `WINNER: ${winner.nickname} (${winner.score})\nYOUR SCORE: ${myScore}`;
-             document.getElementById('modal-title').textContent = title;
-             document.getElementById('modal-content').textContent = content;
-             document.getElementById('message-modal').classList.remove('hidden');
+        function getRandomMove(board) {
+            let empties = [];
+            for(let r=0; r<BOARD_SIZE; r++) for(let c=0; c<BOARD_SIZE; c++) if(board[r][c] === '') empties.push({r,c});
+            return empties.length ? empties[Math.floor(Math.random()*empties.length)] : null;
         }
 
         window.triggerRematch = async () => {
