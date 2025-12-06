@@ -1048,9 +1048,13 @@
                 // Start Animation
                 isMoveCommitted = false; selectedCell = null;
                 isAnimating = true;
+                
+                // FIX: Set pendingBoardState BEFORE calling animation function which uses it
+                pendingBoardState = JSON.parse(gameData.board); 
+                
                 // Important: Pass the LATEST gameData to the animation function
                 triggerSequentialAnimations(JSON.parse(gameData.lastRoundEvents || "[]"), gameData);
-                pendingBoardState = JSON.parse(gameData.board); // Store pending state
+                
                 lastProcessedTurn = gameData.turn;
             } else if (!isAnimating) {
                 // Just render the static board
