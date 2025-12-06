@@ -214,12 +214,7 @@
                         
                         <button id="join-queue-btn" disabled
                                 class="w-full bg-black text-white hover:bg-gray-800 font-bold py-4 text-sm tracking-widest uppercase transition-colors disabled:opacity-30 disabled:cursor-not-allowed mb-2">
-                            Find Match (Auto Queue)
-                        </button>
-                        
-                        <button id="create-room-btn"
-                                class="w-full bg-white text-blue-600 border-2 border-blue-600 hover:bg-blue-50 font-bold py-3 text-sm tracking-widest uppercase transition-colors">
-                            Create Open Room
+                            Find Match
                         </button>
                     </div>
 
@@ -234,17 +229,17 @@
                              Start with Selected (3P)
                          </button>
 
-                         <div class="flex gap-2">
-                             <button id="start-2p-ai-btn"
-                                     class="hidden flex-1 bg-gray-900 text-yellow-400 border-2 border-gray-900 hover:bg-gray-800 font-bold py-3 text-xs tracking-widest uppercase transition-colors shadow-lg">
-                                 2P + 1 AI
-                             </button>
+                         <div class="flex gap-2 w-full">
                              <button id="force-ai-btn" 
-                                     class="hidden flex-1 bg-white text-black border-2 border-black hover:bg-black hover:text-white font-bold py-3 text-xs tracking-widest uppercase transition-colors">
+                                     class="flex-1 bg-white text-black border-2 border-black hover:bg-black hover:text-white font-bold py-3 text-xs tracking-widest uppercase transition-colors">
                                  Solo AI
                              </button>
+                             <button id="create-room-btn"
+                                     class="flex-1 bg-blue-600 text-white border-2 border-blue-600 hover:bg-blue-700 font-bold py-3 text-xs tracking-widest uppercase transition-colors">
+                                Create Open Room
+                             </button>
                          </div>
-                         <p class="text-[10px] text-gray-400 text-center font-bold uppercase mt-2">Select 2 players from queue to start with friends</p>
+                         <p class="text-[10px] text-gray-400 text-center font-bold uppercase mt-2">Wait for match or select options above</p>
                     </div>
                 </div>
             </div>
@@ -487,7 +482,7 @@
         const createRoomBtn = document.getElementById('create-room-btn');
         const gameButtonsDiv = document.getElementById('game-buttons');
         const aiBtn = document.getElementById('force-ai-btn');
-        const start2pBtn = document.getElementById('start-2p-ai-btn');
+        
         const start3pBtn = document.getElementById('start-3p-quick-btn');
         const startFriendsBtn = document.getElementById('start-friends-btn');
         
@@ -581,15 +576,14 @@
             joinBtn.disabled = e.target.value.trim().length === 0;
         });
 
-        // --- Create Room Button ---
+        // --- Create Room Button Logic (Called from Screen 2) ---
         createRoomBtn.addEventListener('click', async () => {
-            const val = nicknameInput.value.trim();
-            if(!val) {
-                alert("Please enter a nickname first.");
-                return;
-            }
-            myNickname = val.toUpperCase().slice(0, 10);
+            // Already in queue, so myNickname is set
             if(window.SoundManager) window.SoundManager.init();
+            
+            // Must leave queue first to become host
+            await leaveQueue();
+            
             await createPublicRoom();
         });
 
@@ -616,7 +610,6 @@
 
             joinBtn.textContent = "SEARCHING...";
             joinBtn.disabled = true;
-            createRoomBtn.disabled = true;
             nicknameInput.disabled = true;
 
             selectedFriendIds.clear(); // Reset selections on join
@@ -674,7 +667,7 @@
                 currentQueueDocs = docs;
                 renderQueueList(docs);
                 
-                // --- Logic Update: Manual Start Only ---
+                // --- Logic Update: Button Visibility in Lobby ---
                 if (queueDocId) {
                     // Update Button Visibility based on counts
                     
@@ -693,20 +686,7 @@
                         startFriendsBtn.classList.add('hidden');
                     }
 
-                    // 3. AI Buttons
-                    if (docs.length >= 1) { 
-                        aiBtn.classList.remove('hidden');
-                        aiBtn.classList.remove('flex-1'); // Reset flex
-                        aiBtn.classList.add('flex-1');
-                    } else {
-                        aiBtn.classList.add('hidden');
-                    }
-
-                    if (docs.length >= 2) {
-                        start2pBtn.classList.remove('hidden');
-                    } else {
-                        start2pBtn.classList.add('hidden');
-                    }
+                    // 3. AI & Create Room are static (always visible in lobby)
                 }
             });
         }
@@ -736,22 +716,6 @@
              }
              
              await initGameWithPlayers(selectedDocs);
-        });
-
-        start2pBtn.addEventListener('click', async () => {
-            if(window.SoundManager) window.SoundManager.init();
-            if (!queueDocId || currentQueueDocs.length < 2) return;
-            // Prefer selected friend if only 1 selected, otherwise top 2
-            let targets = [];
-            if (selectedFriendIds.size === 1) {
-                targets = currentQueueDocs.filter(d => d.id === userId || selectedFriendIds.has(d.id));
-            } 
-            
-            if (targets.length !== 2) {
-                 targets = currentQueueDocs.slice(0, 2);
-            }
-            
-            await initGameWithPlayers(targets, true); 
         });
 
         aiBtn.addEventListener('click', async () => {
@@ -887,15 +851,14 @@
             nicknameInput.value = "";
             nicknameInput.focus();
             
-            joinBtn.textContent = "Find Match (Auto Queue)";
+            joinBtn.textContent = "Find Match";
             joinBtn.disabled = true;
-            createRoomBtn.disabled = false;
             
             // Hide specific buttons
             start3pBtn.classList.add('hidden');
             startFriendsBtn.classList.add('hidden');
-            start2pBtn.classList.add('hidden');
-            aiBtn.classList.add('hidden');
+            
+            // Note: AI and CreateRoom are part of gameButtonsDiv, which is hidden, so we are good.
 
             myNicknameDisplay.textContent = ''; 
             myNicknameMobile.textContent = '-';
@@ -944,10 +907,12 @@
             nicknameSection.classList.add('hidden');
             gameButtonsDiv.classList.remove('hidden');
             
+            // Hide queue buttons
             start3pBtn.classList.add('hidden');
             startFriendsBtn.classList.add('hidden');
-            start2pBtn.classList.add('hidden');
-            aiBtn.classList.add('hidden');
+            // Hide lobby buttons (Solo/Create)
+            gameButtonsDiv.classList.add('hidden');
+
             
             unsubscribeGame = onSnapshot(doc(db, 'artifacts', appId, 'public', 'data', 'games', gameId), (docSnap) => {
                 if(!docSnap.exists()) {
