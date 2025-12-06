@@ -103,6 +103,24 @@
 </head>
 <body class="flex flex-col items-center justify-center min-h-screen p-2 md:p-8" onclick="SoundManager.init()">
 
+    <div id="message-modal" class="hidden fixed inset-0 z-[100] flex items-center justify-center backdrop-blur-[2px] bg-black/30">
+        <div class="modal-content bg-white/20 border border-white/40 p-6 w-[80%] max-w-sm text-center backdrop-blur-md shadow-[0_8px_32px_0_rgba(31,38,135,0.37)] rounded-xl relative">
+            <button onclick="document.getElementById('message-modal').classList.add('hidden')" class="absolute top-2 right-3 text-white text-2xl font-bold p-1 leading-none hover:text-gray-300">&times;</button>
+            
+            <h3 id="modal-title" class="text-2xl font-black uppercase mb-3 tracking-tighter text-white drop-shadow-md">TITLE</h3>
+            <p id="modal-content" class="text-white mb-6 font-bold whitespace-pre-line leading-relaxed text-sm drop-shadow-sm">Content</p>
+            
+            <div class="flex flex-col gap-2 w-full">
+                <button id="modal-play-again" class="w-full bg-black hover:bg-gray-800 text-white border border-white/20 font-black py-4 text-sm tracking-[0.2em] uppercase transition-all hover:scale-105 rounded-lg shadow-xl">
+                    RESTART GAME
+                </button>
+                <button id="modal-return-lobby" onclick="window.returnToLobby()" class="w-full bg-white hover:bg-gray-100 text-black border border-black font-black py-4 text-sm tracking-[0.2em] uppercase transition-all hover:scale-105 rounded-lg shadow-xl">
+                    RETURN TO LOBBY
+                </button>
+            </div>
+        </div>
+    </div>
+
     <div id="create-room-modal" class="hidden fixed inset-0 z-[60] flex items-center justify-center backdrop-blur-sm bg-black/40">
         <div class="modal-content bg-white p-8 w-[90%] max-w-md shadow-2xl border-2 border-black text-center">
             <h3 class="text-3xl font-black uppercase mb-6 tracking-tighter">CREATE ROOM</h3>
@@ -163,25 +181,6 @@
                     
                     <div class="col-span-5 flex items-center justify-center h-full text-white text-xl font-bold tracking-widest uppercase bg-waiting-rainbow shadow-inner">
                         Waiting for match
-                    </div>
-
-                    <div id="message-modal" class="hidden absolute inset-0 z-50 flex items-center justify-center backdrop-blur-[2px] bg-black/30">
-                        <div class="modal-content bg-white/20 border border-white/40 p-6 w-[80%] max-w-sm text-center backdrop-blur-md shadow-[0_8px_32px_0_rgba(31,38,135,0.37)] rounded-xl relative">
-                            <!-- X Button: Now just closes the modal -->
-                            <button onclick="document.getElementById('message-modal').classList.add('hidden')" class="absolute top-2 right-3 text-white text-2xl font-bold p-1 leading-none hover:text-gray-300">&times;</button>
-                            
-                            <h3 id="modal-title" class="text-2xl font-black uppercase mb-3 tracking-tighter text-white drop-shadow-md">TITLE</h3>
-                            <p id="modal-content" class="text-white mb-6 font-bold whitespace-pre-line leading-relaxed text-sm drop-shadow-sm">Content</p>
-                            
-                            <div class="flex flex-col gap-2 w-full">
-                                <button id="modal-play-again" class="w-full bg-black hover:bg-gray-800 text-white border border-white/20 font-black py-4 text-sm tracking-[0.2em] uppercase transition-all hover:scale-105 rounded-lg shadow-xl">
-                                    RESTART GAME
-                                </button>
-                                <button id="modal-return-lobby" onclick="window.returnToLobby()" class="w-full bg-white hover:bg-gray-100 text-black border border-black font-black py-4 text-sm tracking-[0.2em] uppercase transition-all hover:scale-105 rounded-lg shadow-xl">
-                                    RETURN TO LOBBY
-                                </button>
-                            </div>
-                        </div>
                     </div>
                 </div>
             </div>
@@ -816,6 +815,10 @@
 
             inviteModal.classList.add('hidden');
             createRoomModal.classList.add('hidden');
+            
+            // 2. FIXED: Reset Modal Visibility but DO NOT destroy it
+            document.getElementById('message-modal').classList.add('hidden');
+
             nicknameSection.classList.remove('hidden');
             gameButtonsDiv.classList.add('hidden');
             nicknameInput.disabled = false; nicknameInput.value = ""; nicknameInput.focus();
@@ -829,12 +832,10 @@
             updateTimerDisplay("--");
             scoreList.innerHTML = '<li class="text-gray-300 text-xs uppercase tracking-widest py-2">Game not started</li>';
             
-            // Reset modal completely
-            const modal = document.getElementById('message-modal');
-            modal.classList.add('hidden');
-            
-            boardElement.innerHTML = `<div class="col-span-5 flex items-center justify-center h-full text-white text-xl font-bold tracking-widest uppercase bg-waiting-rainbow shadow-inner">Waiting for match</div><div id="message-modal" class="hidden absolute inset-0 z-50 flex items-center justify-center backdrop-blur-[2px] bg-black/30"><div class="modal-content bg-white/20 border border-white/40 p-6 w-[80%] max-w-sm text-center backdrop-blur-md shadow-[0_8px_32px_0_rgba(31,38,135,0.37)] rounded-xl relative"><button onclick="document.getElementById('message-modal').classList.add('hidden')" class="absolute top-2 right-3 text-white text-2xl font-bold p-1 leading-none hover:text-gray-300">&times;</button><h3 id="modal-title" class="text-2xl font-black uppercase mb-3 tracking-tighter text-white drop-shadow-md">TITLE</h3><p id="modal-content" class="text-white mb-6 font-bold whitespace-pre-line leading-relaxed text-sm drop-shadow-sm">Content</p><div class="flex flex-col gap-2 w-full"><button id="modal-play-again" class="w-full bg-black hover:bg-gray-800 text-white border border-white/20 font-black py-4 text-sm tracking-[0.2em] uppercase transition-all hover:scale-105 rounded-lg shadow-xl">RESTART GAME</button><button onclick="window.returnToLobby()" class="w-full bg-white hover:bg-gray-100 text-black border border-black font-black py-4 text-sm tracking-[0.2em] uppercase transition-all hover:scale-105 rounded-lg shadow-xl">RETURN TO LOBBY</button></div></div></div>`;
-             setupPlayAgainListener();
+            // 2. FIXED: Inject ONLY the waiting screen, not the modal
+            boardElement.innerHTML = `<div class="col-span-5 flex items-center justify-center h-full text-white text-xl font-bold tracking-widest uppercase bg-waiting-rainbow shadow-inner">Waiting for match</div>`;
+             
+            setupPlayAgainListener();
         }
 
         async function enterGame(id) {
@@ -872,12 +873,9 @@
             overwriteUIContainer.classList.remove('hidden');
         }
 
-        // --- NEW: KICK & START LOGIC ---
         window.kickPlayerFromRoom = async (targetId) => {
             if (!gameId || !isWaitingRoomHost) return;
-            if (targetId === userId) return; // Can't kick self
-            
-            // REMOVED: if(!confirm("Kick this player?")) return;
+            if (targetId === userId) return; 
 
             const gameRef = doc(db, 'artifacts', appId, 'public', 'data', 'games', gameId);
             try {
@@ -911,9 +909,7 @@
         };
 
         function handleGameUpdate(gameData) {
-            // Check if I was kicked
             if (gameId && userId && !gameData.players[userId]) {
-                // REMOVED: alert("You have been kicked from the room.");
                 resetLocalStateAndUI();
                 return;
             }
@@ -946,7 +942,6 @@
                         }
                     });
 
-                    // Start Button Logic
                     let actionHTML = '';
                     if (isMeHost) {
                          if (pCount === 3) {
@@ -978,7 +973,6 @@
                      myColorDisplay.textContent = cInfo.label;
                 }
                 
-                // HOST LOGIC: Show Queue in Sidebar to allow invites
                 if (gameData.hostId === userId) {
                     isWaitingRoomHost = true;
                     myHostedRoomName = gameData.roomName;
@@ -992,7 +986,6 @@
                 return;
             }
 
-            // Game Started
             if (isWaitingRoomHost) {
                  isWaitingRoomHost = false;
                  document.getElementById('open-rooms-section').classList.remove('hidden');
@@ -1028,36 +1021,24 @@
                  overwriteUIContainer.classList.add('hidden');
             }
             
-            // --- FIX: Reliable Game Over Logic ---
-            // Determine if a new turn animation is needed
             const isNewTurn = gameData.turn > lastProcessedTurn;
 
-            // Handle Finished Status
             if (gameData.status === 'finished') {
                 if (localTimerInterval) clearInterval(localTimerInterval);
                 updateTimerDisplay("0");
                 
-                // If NO new turn animation is pending, show result immediately.
-                // If animation IS pending, the callback in triggerSequentialAnimations will handle it.
                 if (!isNewTurn && !isAnimating) {
                     showWinner(gameData.players);
                 }
             }
 
             if (isNewTurn) {
-                // Start Animation
                 isMoveCommitted = false; selectedCell = null;
                 isAnimating = true;
-                
-                // FIX: Set pendingBoardState BEFORE calling animation function which uses it
                 pendingBoardState = JSON.parse(gameData.board); 
-                
-                // Important: Pass the LATEST gameData to the animation function
                 triggerSequentialAnimations(JSON.parse(gameData.lastRoundEvents || "[]"), gameData);
-                
                 lastProcessedTurn = gameData.turn;
             } else if (!isAnimating) {
-                // Just render the static board
                 currentBoardState = JSON.parse(gameData.board);
                 renderBoard(currentBoardState, gameData);
             }
@@ -1070,7 +1051,6 @@
             if (!events || events.length === 0) {
                 isAnimating = false; currentBoardState = pendingBoardState;
                 renderBoard(currentBoardState, gameData);
-                // --- FIX: Direct check for finished status ---
                 if (gameData.status === 'finished') {
                     setTimeout(() => { showWinner(gameData.players); }, 500);
                 }
@@ -1079,10 +1059,11 @@
             let accumulatedDelay = 0;
             events.forEach((ev, index) => {
                 const cellIdx = (ev.r * BOARD_SIZE) + ev.c;
-                // --- FIX: Faster Animations (10% Slower than previous fast version) ---
-                let duration = 660; // Was 600
-                if(ev.type === 'flip') duration = 330; // Was 300
-                else if (ev.type === 'conflict') duration = (ev.colors.length * 550) + 550; // Was 500/500
+                // 3. FIXED: Animations slowed down by 10%
+                let duration = 730; // Was 660 (which was 600)
+                if(ev.type === 'flip') duration = 365; // Was 330 (which was 300)
+                else if (ev.type === 'conflict') duration = (ev.colors.length * 605) + 605; // Was (N*550)+550
+                
                 setTimeout(() => {
                     const cells = boardElement.querySelectorAll('.cell');
                     if (cells[cellIdx]) {
@@ -1097,19 +1078,19 @@
                                     if(window.SoundManager) window.SoundManager.playGlass(); 
                                     cell.classList.remove('bg-white', 'bg-player-red', 'bg-player-yellow', 'bg-player-blue');
                                     cell.classList.add(COLOR_MAP[cCode].code);
-                                    cell.style.animation = 'shine-pulse 0.55s forwards'; // Slower pulse
-                                }, i * 550); // Slower Interval
+                                    cell.style.animation = 'shine-pulse 0.6s forwards'; // Slower pulse
+                                }, i * 605); // Slower Interval
                             });
-                            setTimeout(() => { cell.style.animation = 'vanish-anim 0.55s forwards'; }, colors.length * 550);
+                            setTimeout(() => { cell.style.animation = 'vanish-anim 0.6s forwards'; }, colors.length * 605);
                         } else if (ev.type === 'success') {
                             if(window.SoundManager) window.SoundManager.playGlass();
                             cell.classList.remove('bg-white'); cell.classList.add(COLOR_MAP[ev.color].code);
-                            cell.style.animation = 'shine-pulse 0.55s forwards'; 
+                            cell.style.animation = 'shine-pulse 0.6s forwards'; 
                         } else if (ev.type === 'flip') {
                             if(window.SoundManager) window.SoundManager.playGlass();
                             COLORS.forEach(c => cell.classList.remove(COLOR_MAP[c].code));
                             cell.classList.add(COLOR_MAP[ev.color].code);
-                            cell.style.animation = 'flip-anim 0.33s forwards'; 
+                            cell.style.animation = 'flip-anim 0.36s forwards'; 
                         }
                     }
                 }, accumulatedDelay);
@@ -1118,9 +1099,8 @@
             setTimeout(() => {
                 isAnimating = false; currentBoardState = pendingBoardState;
                 renderBoard(currentBoardState, gameData);
-                // --- FIX: Robust finish check ---
                 if (gameData.status === 'finished') {
-                     setTimeout(() => { showWinner(gameData.players); }, 300); // Fast popup
+                     setTimeout(() => { showWinner(gameData.players); }, 300); 
                 }
             }, accumulatedDelay);
         }
@@ -1248,8 +1228,8 @@
                 if (cellMoves.length > 1) {
                     const colors = cellMoves.map(m => m.color);
                     roundEvents.push({ r, c, type: 'conflict', colors: colors });
-                    // --- FIX: Faster Turn Resolution Calc ---
-                    totalAnimTime += (colors.length * 550) + 550; // Was 500/500
+                    // 4. FIXED: Wait time calculation slowed by 10%
+                    totalAnimTime += (colors.length * 605) + 605; 
                     board[r][c] = ''; 
                 }
             }
@@ -1266,13 +1246,13 @@
             validMoves.forEach(m => {
                 board[m.r][m.c] = m.color;
                 roundEvents.push({ r: m.r, c: m.c, color: m.color, type: 'success' });
-                totalAnimTime += 660; // Was 600
+                totalAnimTime += 730; // Was 660
                 if(m.isOverwrite) overwriteConsumers.add(m.id);
                 const flips = applyOthello(board, m.r, m.c, m.color);
                 flips.forEach(f => {
                     board[f.r][f.c] = m.color; 
                     roundEvents.push({ r: f.r, c: f.c, color: m.color, type: 'flip' });
-                    totalAnimTime += 330; // Was 300
+                    totalAnimTime += 365; // Was 330
                 });
             });
             let newScores = {};
@@ -1438,7 +1418,6 @@
                     players[userId] = { nickname: myNickname, color: nextColor, isAI: false, score: 0, overwrites: MAX_OVERWRITES, lastMove: null };
                     const newOrder = [...data.playerOrder, userId];
                     
-                    // REFACTORED: Do NOT set status to 'playing'. Just add player.
                     transaction.update(gameRef, { players: players, playerOrder: newOrder });
                 });
                 enterGame(targetGameId);
@@ -1493,6 +1472,7 @@
              const content = `WINNER: ${winner.nickname} (${winner.score})\nYOUR SCORE: ${myScore}`;
              document.getElementById('modal-title').textContent = title;
              document.getElementById('modal-content').textContent = content;
+             
              // Force display
              const modal = document.getElementById('message-modal');
              modal.classList.remove('hidden');
