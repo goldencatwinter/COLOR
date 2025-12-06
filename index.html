@@ -271,7 +271,7 @@
 
                 <div id="open-rooms-section" class="flex-1 flex flex-col min-h-0 bg-white border border-gray-200 p-4 shadow-sm">
                     <div class="flex justify-between items-center mb-2 border-b border-gray-100 pb-2 shrink-0">
-                        <p class="text-[10px] font-bold text-blue-600 uppercase tracking-widest">OPEN MATCHES</p>
+                        <p class="text-[10px] font-bold text-blue-600 uppercase tracking-widest">OPEN ROOMS</p>
                         <span id="open-rooms-count" class="text-xs font-bold bg-blue-600 text-white px-2 py-0.5">0</span>
                     </div>
                     <div id="open-rooms-list" class="flex-1 overflow-y-auto space-y-2 pr-2">
@@ -279,17 +279,7 @@
                     </div>
                 </div>
 
-                <div id="active-section" class="flex-1 flex flex-col min-h-0 bg-white border border-gray-200 p-4 shadow-sm">
-                    <div class="flex justify-between items-center mb-2 border-b border-gray-100 pb-2 shrink-0">
-                        <p class="text-[10px] font-bold text-green-600 uppercase tracking-widest">IN GAME</p>
-                        <span id="active-count" class="text-xs font-bold bg-green-600 text-white px-2 py-0.5">0</span>
-                    </div>
-                    <div id="active-list" class="flex-1 overflow-y-auto space-y-2 pr-2">
-                        <p class="text-gray-300 text-xs text-center py-4 uppercase tracking-widest">No Active Games</p>
-                    </div>
                 </div>
-
-            </div>
         </div>
     </div>
 
@@ -473,7 +463,6 @@
         let unsubscribeQueue = null;
         let unsubscribeGame = null;
         let unsubscribeMyTicket = null;
-        let unsubscribeActiveGames = null;
         let unsubscribeOpenRooms = null;
 
         const nicknameInput = document.getElementById('nickname-input');
@@ -567,7 +556,6 @@
             overwriteUIContainer.classList.add('hidden');
             
             watchQueueList();
-            watchActiveGames();
             watchOpenRooms();
         }
         window.onload = init;
@@ -581,10 +569,13 @@
             // Already in queue, so myNickname is set
             if(window.SoundManager) window.SoundManager.init();
             
+            const roomName = prompt("방 제목을 입력하세요 (Enter Room Name):");
+            if (!roomName) return;
+
             // Must leave queue first to become host
             await leaveQueue();
             
-            await createPublicRoom();
+            await createPublicRoom(roomName);
         });
 
         // --- Join Queue (Auto) Button ---
@@ -824,7 +815,6 @@
 
             // Keep global listeners active
             watchQueueList(); 
-            watchActiveGames();
             watchOpenRooms();
 
             queueDocId = null;
@@ -949,9 +939,10 @@
                 const waitingEl = boardElement.querySelector('.col-span-5');
                 if (waitingEl) {
                     const pCount = Object.keys(gameData.players).length;
+                    const rName = gameData.roomName || 'Room';
                     waitingEl.innerHTML = `
                         <div class="flex flex-col items-center justify-center text-center">
-                            <h2 class="text-2xl font-black uppercase mb-2">Room Created</h2>
+                            <h2 class="text-2xl font-black uppercase mb-2 text-yellow-300 drop-shadow-md">${rName}</h2>
                             <p class="text-sm font-bold text-white/80 mb-4">Waiting for challengers... (${pCount}/3)</p>
                             <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-white"></div>
                         </div>`;
@@ -1532,53 +1523,6 @@
             });
         }
 
-        // --- New: Watch Active Games ---
-        function watchActiveGames() {
-            if (unsubscribeActiveGames) return;
-
-            const gamesRef = collection(db, 'artifacts', appId, 'public', 'data', 'games');
-            const q = query(gamesRef, where('status', '==', 'playing'), orderBy('createdAt', 'desc'), limit(10));
-            
-            unsubscribeActiveGames = onSnapshot(q, (snapshot) => {
-                const activeListEl = document.getElementById('active-list');
-                const activeCountEl = document.getElementById('active-count');
-                
-                if(!activeListEl) return;
-
-                let totalActivePlayers = 0;
-                let htmlContent = '';
-
-                snapshot.forEach(doc => {
-                    const gameData = doc.data();
-                    const players = gameData.players;
-                    const humanPlayers = Object.values(players).filter(p => !p.isAI);
-                    
-                    if (humanPlayers.length > 0) {
-                        totalActivePlayers += humanPlayers.length;
-                        htmlContent += `<div class="p-2 bg-gray-50 border border-gray-100 rounded mb-2">`;
-                        htmlContent += `<div class="text-[10px] text-gray-400 font-bold mb-1">MATCH ROOM</div>`;
-                        htmlContent += `<div class="flex flex-wrap gap-1">`;
-                        humanPlayers.forEach(p => {
-                            let textColor = 'text-gray-800';
-                            if(p.color === 'R') textColor = 'text-red-600';
-                            if(p.color === 'Y') textColor = 'text-yellow-600';
-                            if(p.color === 'B') textColor = 'text-blue-600';
-                            htmlContent += `<span class="text-xs font-bold ${textColor} border border-gray-200 bg-white px-1.5 py-0.5 rounded">${p.nickname}</span>`;
-                        });
-                        htmlContent += `</div></div>`;
-                    }
-                });
-
-                activeCountEl.textContent = totalActivePlayers;
-                
-                if (totalActivePlayers === 0) {
-                    activeListEl.innerHTML = '<p class="text-gray-300 text-xs text-center py-4 uppercase tracking-widest">No Active Games</p>';
-                } else {
-                    activeListEl.innerHTML = htmlContent;
-                }
-            });
-        }
-
         // --- New: Watch Open Rooms & Logic ---
         function watchOpenRooms() {
             if (unsubscribeOpenRooms) return;
@@ -1607,6 +1551,7 @@
                         const pCount = Object.keys(room.players).length;
                         const hostName = room.players[room.hostId]?.nickname || 'Unknown';
                         const isMyRoom = (room.players[userId] !== undefined);
+                        const rName = room.roomName || 'Room';
                         
                         const el = document.createElement('div');
                         el.className = "flex justify-between items-center p-3 border border-blue-100 bg-blue-50/50 mb-2 rounded hover:bg-blue-100 transition-colors cursor-pointer";
@@ -1618,8 +1563,8 @@
 
                         el.innerHTML = `
                             <div>
-                                <div class="text-[10px] text-blue-400 font-bold uppercase">HOST: ${hostName}</div>
-                                <div class="text-xs font-bold text-gray-700">WAITING FOR PLAYERS</div>
+                                <div class="text-sm font-black uppercase text-blue-700 leading-tight mb-0.5">${rName}</div>
+                                <div class="text-[10px] text-gray-500 font-bold uppercase">HOST: ${hostName}</div>
                             </div>
                             <div class="flex flex-col items-end gap-1">
                                 <span class="text-lg font-black text-blue-600">${pCount}/3</span>
@@ -1632,14 +1577,15 @@
             });
         }
 
-        async function createPublicRoom() {
+        async function createPublicRoom(roomName) {
             nicknameSection.classList.add('hidden');
             joinBtn.disabled = true; 
             
             // Visual for host
             boardElement.innerHTML = `
                 <div class="col-span-5 flex flex-col items-center justify-center h-full bg-white text-black p-4 text-center">
-                    <h2 class="text-2xl font-black uppercase mb-2">Creating Room...</h2>
+                    <h2 class="text-2xl font-black uppercase mb-2 text-yellow-600">${roomName}</h2>
+                    <p class="text-sm font-bold text-gray-500 mb-4">Creating Room...</p>
                     <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-black"></div>
                 </div>`;
 
@@ -1667,6 +1613,7 @@
                 players: playersData,
                 playerOrder: [userId],
                 hostId: userId, 
+                roomName: roomName,
                 createdAt: serverTimestamp(),
                 lastRoundEvents: "[]"
             });
