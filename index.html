@@ -44,6 +44,9 @@
             100% { transform: perspective(400px) rotateY(0); }
         }
 
+        @keyframes slideIn { from { opacity: 0; transform: translateX(-10px); } to { opacity: 1; transform: translateX(0); } }
+
+        /* 무지개 텍스트 */
         .title-rainbow {
             background: linear-gradient(to right, #ff0000, #ff8800, #ffff00, #008000, #0000ff, #4b0082, #ee82ee);
             -webkit-background-clip: text;
@@ -53,10 +56,24 @@
             animation: rainbowCycle 10s linear infinite;
         }
 
+        /* 배경 무지개 */
         .bg-waiting-rainbow {
             background: linear-gradient(45deg, #ff0000, #ffa500, #ffff00, #008000, #0000ff, #4b0082, #ee82ee, #ff0000);
             background-size: 400% 400%;
             animation: rainbowCycle 20s ease infinite;
+        }
+
+        /* [NEW] 무지개 버튼 스타일 (3인 시작용) */
+        .btn-rainbow-pulse {
+            background: linear-gradient(90deg, #ff0000, #ff7f00, #ffff00, #00ff00, #0000ff, #4b0082, #8f00ff);
+            background-size: 300% 300%;
+            animation: rainbowCycle 3s ease infinite, shine-pulse 2s infinite;
+            border: 4px solid rgba(255,255,255,0.5);
+            box-shadow: 0 0 20px rgba(255, 255, 255, 0.6);
+        }
+        .btn-rainbow-pulse:hover {
+            transform: scale(1.05);
+            box-shadow: 0 0 30px rgba(255, 255, 255, 0.9);
         }
 
         .overwrite-box {
@@ -78,24 +95,9 @@
         .cell { transition: transform 0.1s ease-in-out; }
         .cell:hover:not(.occupied-immutable) { filter: brightness(0.9); cursor: pointer; }
         
-        @keyframes slideIn { from { opacity: 0; transform: translateX(-10px); } to { opacity: 1; transform: translateX(0); } }
         .queue-item { animation: slideIn 0.3s ease-out forwards; }
-
         .modal-content { animation: popIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
         
-        /* Custom Checkbox */
-        .friend-checkbox {
-            appearance: none; background-color: #fff; margin: 0;
-            font: inherit; color: currentColor; width: 1.15em; height: 1.15em;
-            border: 2px solid currentColor; display: grid; place-content: center; cursor: pointer;
-        }
-        .friend-checkbox::before {
-            content: ""; width: 0.65em; height: 0.65em; transform: scale(0);
-            transition: 120ms transform ease-in-out; box-shadow: inset 1em 1em black;
-            transform-origin: center; clip-path: polygon(14% 44%, 0 65%, 50% 100%, 100% 16%, 80% 0%, 43% 62%);
-        }
-        .friend-checkbox:checked::before { transform: scale(1); }
-
         ::-webkit-scrollbar { width: 4px; }
         ::-webkit-scrollbar-track { background: transparent; }
         ::-webkit-scrollbar-thumb { background: #d4d4d4; }
@@ -203,14 +205,6 @@
                     </div>
 
                     <div id="game-buttons" class="hidden flex flex-col gap-2 w-full">
-                         <button id="start-3p-quick-btn" class="hidden w-full bg-gradient-to-r from-red-600 via-yellow-500 to-blue-600 text-white font-black py-4 text-sm tracking-widest uppercase transition-all shadow-lg hover:scale-[1.02]">
-                             Start 3P Quick Match
-                         </button>
-
-                         <button id="start-friends-btn" class="hidden w-full bg-black text-white border-2 border-black hover:bg-gray-800 font-bold py-3 text-sm tracking-widest uppercase transition-colors">
-                             Start with Selected (3P)
-                         </button>
-
                          <div class="flex gap-2 w-full">
                              <button id="force-ai-btn" class="flex-1 bg-white text-black border-2 border-black hover:bg-black hover:text-white font-bold py-3 text-xs tracking-widest uppercase transition-colors">
                                  Solo AI
@@ -424,8 +418,6 @@
         const createRoomBtn = document.getElementById('create-room-btn');
         const gameButtonsDiv = document.getElementById('game-buttons');
         const aiBtn = document.getElementById('force-ai-btn');
-        const start3pBtn = document.getElementById('start-3p-quick-btn');
-        const startFriendsBtn = document.getElementById('start-friends-btn');
         const queueListEl = document.getElementById('queue-list');
         const queueCountEl = document.getElementById('queue-count');
         const boardElement = document.getElementById('game-board');
@@ -491,41 +483,29 @@
             
             watchQueueList();
             watchOpenRooms();
-            startCleanupInterval(); // Start cleanup loop
+            startCleanupInterval(); 
         }
         window.onload = init;
 
         // --- Periodic Cleanup for Stale Rooms ---
         function startCleanupInterval() {
             setInterval(async () => {
-                // Every 5 seconds, find rooms that are stuck (e.g., created > 30 seconds ago and still waiting) or empty
                 const gamesRef = collection(db, 'artifacts', appId, 'public', 'data', 'games');
                 const thirtySecondsAgo = new Date(Date.now() - 30 * 1000); 
-                
                 try {
-                    // Query for waiting rooms
                     const q = query(gamesRef, where('status', '==', 'waiting'));
                     const snap = await getDocs(q);
-                    
                     snap.forEach(async (docSnap) => {
                         const data = docSnap.data();
                         const createdTime = data.createdAt ? data.createdAt.toDate() : new Date();
-                        
-                        // Rule 1: Delete if older than 30 seconds and still waiting (Abandoned/Timeout)
                         const isStale = createdTime < thirtySecondsAgo;
-                        
-                        // Rule 2: Delete if it has no players (Bugged)
                         const isEmpty = !data.players || Object.keys(data.players).length === 0;
-
                         if (isStale || isEmpty) {
-                            console.log(`Deleting stale room: ${docSnap.id}`);
                             await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'games', docSnap.id));
                         }
                     });
-                } catch (e) {
-                    console.error("Cleanup error:", e);
-                }
-            }, 5000); // Check every 5 seconds
+                } catch (e) { console.error("Cleanup error:", e); }
+            }, 5000); 
         }
 
         nicknameInput.addEventListener('input', (e) => {
@@ -646,16 +626,6 @@
                 const docs = snapshot.docs;
                 currentQueueDocs = docs;
                 renderQueueList(docs);
-                
-                if (queueDocId) {
-                    if (docs.length >= 3) {
-                        start3pBtn.classList.remove('hidden');
-                        start3pBtn.textContent = `START 3P GAME (${docs.length} WAITING)`;
-                    } else start3pBtn.classList.add('hidden');
-
-                    if (selectedFriendIds.size === 2) startFriendsBtn.classList.remove('hidden');
-                    else startFriendsBtn.classList.add('hidden');
-                }
             });
         }
 
@@ -689,6 +659,8 @@
                 const nick = d.data().nickname || "Unknown";
                 const el = document.createElement('div');
                 let bgColor = 'bg-white text-gray-600 border-gray-100';
+                
+                // [MODIFIED] Checkbox removed as requested
                 let contentHTML = ``;
                 
                 if (isWaitingRoomHost && !isMe) {
@@ -703,15 +675,12 @@
                     contentHTML = `<span class="font-bold uppercase">YOU (${nick})</span><span class="text-[10px] uppercase tracking-widest opacity-70">WAITING</span>`;
                     bgColor = 'bg-black text-white border-black';
                 } else {
-                    const isSelected = selectedFriendIds.has(d.id);
                     contentHTML = `
                         <div class="flex items-center gap-3">
-                            <input type="checkbox" class="friend-checkbox" ${isSelected ? 'checked' : ''} onclick="window.toggleFriendSelection('${d.id}')">
-                            <span class="font-bold uppercase ${isSelected ? 'text-black' : ''}">${nick}</span>
+                            <span class="font-bold uppercase text-gray-500">${nick}</span>
                         </div>
-                        <span class="text-[10px] uppercase tracking-widest opacity-70">WAITING</span>
+                        <span class="text-[10px] uppercase tracking-widest opacity-50">WAITING</span>
                     `;
-                    if (isSelected) bgColor = 'bg-yellow-50 border-yellow-400 text-black';
                 }
 
                 el.className = `queue-item p-3 border text-xs flex justify-between items-center ${bgColor}`;
@@ -720,50 +689,7 @@
             });
         }
 
-        start3pBtn.addEventListener('click', async () => {
-             if(window.SoundManager) window.SoundManager.init();
-             if (!queueDocId || currentQueueDocs.length < 3) return;
-             const top3 = currentQueueDocs.slice(0, 3);
-             await initGameWithPlayers(top3);
-        });
-
-        startFriendsBtn.addEventListener('click', async () => {
-             if(window.SoundManager) window.SoundManager.init();
-             if (!queueDocId || selectedFriendIds.size !== 2) return;
-             const selectedDocs = currentQueueDocs.filter(d => d.id === userId || selectedFriendIds.has(d.id));
-             if (selectedDocs.length !== 3) { alert("Selected players left."); return; }
-             await initGameWithPlayers(selectedDocs);
-        });
-
         aiBtn.addEventListener('click', async () => { await startSoloAiGame(); });
-
-        async function initGameWithPlayers(usersDocs, fillAI = false) {
-            const gamesRef = collection(db, 'artifacts', appId, 'public', 'data', 'games');
-            const newGameRef = doc(gamesRef);
-            const newGameId = newGameRef.id;
-            const playersData = {};
-            const playerOrder = [];
-            usersDocs.forEach((d, idx) => {
-                const uid = d.data().userId;
-                const nick = d.data().nickname || "Unknown";
-                playersData[uid] = { nickname: nick, color: COLORS[idx], isAI: false, score: 0, overwrites: MAX_OVERWRITES, lastMove: null };
-                playerOrder.push(uid);
-            });
-            lastGameMode = 'PVP';
-            const initialBoard = Array(BOARD_SIZE).fill(0).map(() => Array(BOARD_SIZE).fill(''));
-            const deadLine = Date.now() + FIRST_TURN_DURATION_MS + NETWORK_BUFFER_MS;
-            await runTransaction(db, async (transaction) => {
-                transaction.set(newGameRef, {
-                    status: 'playing', turn: 1, turnDeadline: deadLine,
-                    board: JSON.stringify(initialBoard), players: playersData,
-                    playerOrder: playerOrder, hostId: userId, createdAt: serverTimestamp(), lastRoundEvents: "[]"
-                });
-                for (const d of usersDocs) {
-                    const qRef = doc(db, 'artifacts', appId, 'public', 'data', 'queue', d.id);
-                    transaction.update(qRef, { matchId: newGameId });
-                }
-            });
-        }
 
         async function startSoloAiGame() {
             if(window.SoundManager) window.SoundManager.init();
@@ -815,15 +741,13 @@
 
             inviteModal.classList.add('hidden');
             createRoomModal.classList.add('hidden');
-            
-            // 2. FIXED: Reset Modal Visibility but DO NOT destroy it
             document.getElementById('message-modal').classList.add('hidden');
 
             nicknameSection.classList.remove('hidden');
             gameButtonsDiv.classList.add('hidden');
             nicknameInput.disabled = false; nicknameInput.value = ""; nicknameInput.focus();
             joinBtn.textContent = "Find Match"; joinBtn.disabled = true;
-            start3pBtn.classList.add('hidden'); startFriendsBtn.classList.add('hidden');
+            
             myNicknameDisplay.textContent = ''; myNicknameMobile.textContent = '-'; myNicknameMobile.style.color = '#1a1a1a';
             myColorDisplay.textContent = 'SPECTATOR';
             overwriteUIDisplay.innerHTML = ''; overwriteUIContainer.classList.add('hidden');
@@ -832,7 +756,6 @@
             updateTimerDisplay("--");
             scoreList.innerHTML = '<li class="text-gray-300 text-xs uppercase tracking-widest py-2">Game not started</li>';
             
-            // 2. FIXED: Inject ONLY the waiting screen, not the modal
             boardElement.innerHTML = `<div class="col-span-5 flex items-center justify-center h-full text-white text-xl font-bold tracking-widest uppercase bg-waiting-rainbow shadow-inner">Waiting for match</div>`;
              
             setupPlayAgainListener();
@@ -845,7 +768,6 @@
             if (unsubscribeQueue) { unsubscribeQueue(); unsubscribeQueue = null; }
             nicknameSection.classList.add('hidden');
             gameButtonsDiv.classList.remove('hidden');
-            start3pBtn.classList.add('hidden'); startFriendsBtn.classList.add('hidden');
             gameButtonsDiv.classList.add('hidden'); 
             
             unsubscribeGame = onSnapshot(doc(db, 'artifacts', appId, 'public', 'data', 'games', gameId), (docSnap) => {
@@ -897,6 +819,54 @@
             } catch (e) { console.error("Kick failed", e); }
         };
 
+        // [NEW] 2명일 때 남은 자리에 AI를 넣고 시작하는 함수
+        window.hostStartGameWithAI = async () => {
+            if (!gameId || !isWaitingRoomHost) return;
+            
+            const gameRef = doc(db, 'artifacts', appId, 'public', 'data', 'games', gameId);
+            try {
+                await runTransaction(db, async (transaction) => {
+                    const docSnap = await transaction.get(gameRef);
+                    if (!docSnap.exists()) return;
+                    
+                    const data = docSnap.data();
+                    const players = data.players;
+                    const existingColors = Object.values(players).map(p => p.color);
+                    
+                    // 남은 색상 찾기
+                    const missingColor = COLORS.find(c => !existingColors.includes(c));
+                    if (!missingColor) return; 
+
+                    // AI 플레이어 생성
+                    const aiId = 'AI_BOT_' + Date.now();
+                    const newPlayers = {
+                        ...players,
+                        [aiId]: {
+                            nickname: "AI BOT",
+                            color: missingColor,
+                            isAI: true,
+                            score: 0,
+                            overwrites: MAX_OVERWRITES,
+                            lastMove: null
+                        }
+                    };
+                    const newOrder = [...data.playerOrder, aiId];
+                    const deadLine = Date.now() + FIRST_TURN_DURATION_MS + NETWORK_BUFFER_MS;
+
+                    // 게임 시작 상태로 업데이트
+                    transaction.update(gameRef, {
+                        players: newPlayers,
+                        playerOrder: newOrder,
+                        status: 'playing',
+                        turnDeadline: deadLine
+                    });
+                });
+            } catch(e) { 
+                console.error("Start with AI failed", e); 
+                alert("Failed to start with AI.");
+            }
+        };
+
         window.hostStartGame = async () => {
             if (!gameId || !isWaitingRoomHost) return;
             const deadLine = Date.now() + FIRST_TURN_DURATION_MS + NETWORK_BUFFER_MS;
@@ -930,33 +900,57 @@
                             const isMe = (pid === userId);
                             const canKick = isMeHost && !isMe;
                             playerListHTML += `
-                                <div class="bg-black/10 p-2 mb-2 rounded flex justify-between items-center w-full max-w-xs">
+                                <div class="bg-black/10 p-2 mb-2 rounded flex justify-between items-center w-full max-w-xs transition-all animate-[slideIn_0.3s_ease-out]">
                                     <div class="flex items-center gap-2">
-                                        <div class="w-3 h-3 rounded-full ${COLOR_MAP[p.color].code}"></div>
+                                        <div class="w-4 h-4 rounded-full ${COLOR_MAP[p.color].code} shadow-sm ring-2 ring-white"></div>
                                         <span class="font-bold text-sm uppercase ${isMe ? 'underline' : ''}">${p.nickname}</span>
-                                        ${pid === hostId ? '<span class="text-[10px] bg-yellow-400 text-black px-1 rounded font-bold">HOST</span>' : ''}
+                                        ${pid === hostId ? '<span class="text-[10px] bg-yellow-400 text-black px-1 rounded font-bold shadow-sm">HOST</span>' : ''}
                                     </div>
-                                    ${canKick ? `<button onclick="window.kickPlayerFromRoom('${pid}')" class="bg-red-500 hover:bg-red-600 text-white text-[10px] font-bold px-2 py-1 rounded uppercase">KICK</button>` : ''}
+                                    ${canKick ? `<button onclick="window.kickPlayerFromRoom('${pid}')" class="bg-red-500 hover:bg-red-600 text-white text-[10px] font-bold px-2 py-1 rounded uppercase shadow-md hover:scale-105 transition-transform">KICK</button>` : ''}
                                 </div>
                             `;
                         }
                     });
 
+                    // [MODIFIED] Button UI Logic
                     let actionHTML = '';
                     if (isMeHost) {
                          if (pCount === 3) {
-                             actionHTML = `<button onclick="window.hostStartGame()" class="mt-4 bg-green-600 hover:bg-green-700 text-white font-black py-3 px-8 text-xl tracking-widest uppercase rounded shadow-lg animate-pulse">START GAME</button>`;
+                             // 3명일 때: 화려한 무지개 버튼
+                             actionHTML = `
+                                <button onclick="window.hostStartGame()" 
+                                    class="mt-6 btn-rainbow-pulse text-white font-black text-2xl py-6 px-12 rounded-full tracking-widest uppercase transition-all transform hover:-translate-y-1 active:scale-95 w-full max-w-xs">
+                                    START GAME
+                                </button>`;
+                         } else if (pCount === 2) {
+                             // 2명일 때: 2P + AI 시작 버튼
+                             actionHTML = `
+                                <div class="flex flex-col items-center gap-2 mt-4 w-full max-w-xs">
+                                    <button onclick="window.hostStartGameWithAI()" 
+                                        class="w-full bg-gray-800 hover:bg-gray-700 border-2 border-gray-600 text-white font-bold py-4 rounded-xl text-lg tracking-widest uppercase transition-all hover:scale-105 shadow-xl flex items-center justify-center gap-2">
+                                        <span>START with AI</span>
+                                        <span class="text-xs bg-white text-black px-1.5 rounded font-black">2P</span>
+                                    </button>
+                                    <p class="text-[10px] font-bold text-gray-400 uppercase tracking-widest animate-pulse">Waiting for 3rd player...</p>
+                                </div>
+                             `;
                          } else {
-                             actionHTML = `<p class="mt-4 text-xs font-bold text-gray-400 uppercase tracking-widest">Waiting for players (3/3 needed)</p>`;
+                             // 1명일 때
+                             actionHTML = `<p class="mt-8 text-xs font-bold text-gray-400 uppercase tracking-widest animate-pulse">Waiting for players (1/3)...</p>`;
                          }
                     } else {
-                        actionHTML = `<p class="mt-4 text-xs font-bold text-gray-400 uppercase tracking-widest">Waiting for host to start...</p>`;
+                        actionHTML = `
+                            <div class="mt-6 flex flex-col items-center gap-2">
+                                <div class="animate-spin rounded-full h-6 w-6 border-b-2 border-gray-400"></div>
+                                <p class="text-xs font-bold text-gray-400 uppercase tracking-widest">Waiting for host to start...</p>
+                            </div>
+                        `;
                     }
 
                     waitingEl.innerHTML = `
-                        <div class="flex flex-col items-center justify-center text-center w-full p-6">
-                            <h2 class="text-2xl font-black uppercase mb-6 text-yellow-600 drop-shadow-sm border-b-2 border-yellow-400 pb-2">${rName}</h2>
-                            <div class="w-full flex flex-col items-center mb-2">
+                        <div class="flex flex-col items-center justify-center text-center w-full p-6 h-full">
+                            <h2 class="text-4xl font-black uppercase mb-8 title-rainbow drop-shadow-md tracking-tighter">${rName}</h2>
+                            <div class="w-full flex flex-col items-center gap-1 mb-4">
                                 ${playerListHTML}
                             </div>
                             ${actionHTML}
@@ -1059,10 +1053,9 @@
             let accumulatedDelay = 0;
             events.forEach((ev, index) => {
                 const cellIdx = (ev.r * BOARD_SIZE) + ev.c;
-                // 3. FIXED: Animations slowed down by 10%
-                let duration = 730; // Was 660 (which was 600)
-                if(ev.type === 'flip') duration = 365; // Was 330 (which was 300)
-                else if (ev.type === 'conflict') duration = (ev.colors.length * 605) + 605; // Was (N*550)+550
+                let duration = 730; 
+                if(ev.type === 'flip') duration = 365;
+                else if (ev.type === 'conflict') duration = (ev.colors.length * 605) + 605;
                 
                 setTimeout(() => {
                     const cells = boardElement.querySelectorAll('.cell');
@@ -1078,8 +1071,8 @@
                                     if(window.SoundManager) window.SoundManager.playGlass(); 
                                     cell.classList.remove('bg-white', 'bg-player-red', 'bg-player-yellow', 'bg-player-blue');
                                     cell.classList.add(COLOR_MAP[cCode].code);
-                                    cell.style.animation = 'shine-pulse 0.6s forwards'; // Slower pulse
-                                }, i * 605); // Slower Interval
+                                    cell.style.animation = 'shine-pulse 0.6s forwards'; 
+                                }, i * 605); 
                             });
                             setTimeout(() => { cell.style.animation = 'vanish-anim 0.6s forwards'; }, colors.length * 605);
                         } else if (ev.type === 'success') {
@@ -1228,7 +1221,6 @@
                 if (cellMoves.length > 1) {
                     const colors = cellMoves.map(m => m.color);
                     roundEvents.push({ r, c, type: 'conflict', colors: colors });
-                    // 4. FIXED: Wait time calculation slowed by 10%
                     totalAnimTime += (colors.length * 605) + 605; 
                     board[r][c] = ''; 
                 }
@@ -1246,13 +1238,13 @@
             validMoves.forEach(m => {
                 board[m.r][m.c] = m.color;
                 roundEvents.push({ r: m.r, c: m.c, color: m.color, type: 'success' });
-                totalAnimTime += 730; // Was 660
+                totalAnimTime += 730; 
                 if(m.isOverwrite) overwriteConsumers.add(m.id);
                 const flips = applyOthello(board, m.r, m.c, m.color);
                 flips.forEach(f => {
                     board[f.r][f.c] = m.color; 
                     roundEvents.push({ r: f.r, c: f.c, color: m.color, type: 'flip' });
-                    totalAnimTime += 365; // Was 330
+                    totalAnimTime += 365; 
                 });
             });
             let newScores = {};
@@ -1346,8 +1338,6 @@
                 selectedFriendIds.add(id);
             }
             if(currentQueueDocs) renderQueueList(currentQueueDocs);
-            if (selectedFriendIds.size === 2) startFriendsBtn.classList.remove('hidden');
-            else startFriendsBtn.classList.add('hidden');
         };
 
         function watchOpenRooms() {
