@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>COLOR - Final Optimized</title>
+    <title>COLOR - Final Optimized (Stable)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700;900&display=swap');
@@ -998,10 +998,10 @@
             document.getElementById('timer-display-mobile').className = "text-4xl " + cls;
         }
 
-        // [FIX] Smooth Timer Logic with Deadlock Prevention
+        // [FIX] Smooth Timer Logic with improved Deadlock Prevention
         function runClientTimer(deadline, gameData) {
-            // Prevent timer jitter: if deadline hasn't changed, don't recreate interval
-            if (localTimerInterval && Math.abs(deadline - activeTimerDeadline) < 100) {
+            // [IMPROVEMENT] Use a wider margin (200ms) for stability on mobile network jitter
+            if (localTimerInterval && Math.abs(deadline - activeTimerDeadline) < 200) {
                 return; 
             }
 
@@ -1088,7 +1088,7 @@
             return null;
         }
 
-        // [FIX] Safe Turn Resolution with Try-Catch-Finally (Prevents Deadlock)
+        // [CRITICAL FIX] Safe Turn Resolution with Try-Catch-Finally
         async function resolveTurn(gameData) {
             if (isResolving) return;
             
@@ -1101,12 +1101,11 @@
                     const p = players[pid]; 
                     if (p.isAI) {
                         const aiMove = getStrategicAIMove(board, p, p.color);
-                        // [FIX] AI Move Fallback Logic
                         if (aiMove) moves.push({ id: pid, color: p.color, r: aiMove.r, c: aiMove.c, isOverwrite: aiMove.isOverwrite });
                         else {
+                            // [FIX] Ensure AI makes a move if possible, or passes safely if board is full/blocked.
                             const rand = getRandomMove(board);
                             if(rand) moves.push({ id: pid, color: p.color, r: rand.r, c: rand.c, isOverwrite: false });
-                            // If no move is possible (rand is null), AI passes silently.
                         }
                     } else {
                         if (p.lastMove) moves.push({ id: pid, color: p.color, r: p.lastMove.r, c: p.lastMove.c, isOverwrite: p.lastMove.isOverwrite });
