@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>COLOR - Advanced Lobby</title>
+    <title>COLOR - Final Optimized</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700;900&display=swap');
@@ -877,7 +877,7 @@
             if (!gameId || !isWaitingRoomHost) return;
             if (targetId === userId) return; // Can't kick self
             
-            if(!confirm("Kick this player?")) return;
+            // REMOVED: if(!confirm("Kick this player?")) return;
 
             const gameRef = doc(db, 'artifacts', appId, 'public', 'data', 'games', gameId);
             try {
@@ -913,7 +913,7 @@
         function handleGameUpdate(gameData) {
             // Check if I was kicked
             if (gameId && userId && !gameData.players[userId]) {
-                alert("You have been kicked from the room.");
+                // REMOVED: alert("You have been kicked from the room.");
                 resetLocalStateAndUI();
                 return;
             }
@@ -1032,7 +1032,17 @@
                 if (localTimerInterval) clearInterval(localTimerInterval);
                 updateTimerDisplay("0");
                 if (gameData.turn > lastProcessedTurn) pendingGameEndData = gameData;
-                else if (!isAnimating) showWinner(gameData.players);
+                
+                // --- FIX: Safely show winner if no animation is running ---
+                if (!isAnimating) {
+                    showWinner(gameData.players);
+                } else {
+                    // --- SAFEGUARD: Even if animating, force show after timeout ---
+                    setTimeout(() => {
+                        const modal = document.getElementById('message-modal');
+                        if(modal.classList.contains('hidden')) showWinner(gameData.players);
+                    }, 4000);
+                }
             }
 
             if (gameData.turn > lastProcessedTurn) {
@@ -1059,15 +1069,19 @@
             if (!events || events.length === 0) {
                 isAnimating = false; currentBoardState = pendingBoardState;
                 renderBoard(currentBoardState, gameData);
-                if (pendingGameEndData) setTimeout(() => { showWinner(pendingGameEndData.players); pendingGameEndData = null; }, 1000); 
+                // --- FIX: Direct check for finished status ---
+                if (gameData.status === 'finished') {
+                    setTimeout(() => { showWinner(gameData.players); }, 500);
+                }
                 return;
             }
             let accumulatedDelay = 0;
             events.forEach((ev, index) => {
                 const cellIdx = (ev.r * BOARD_SIZE) + ev.c;
-                let duration = 1000;
-                if(ev.type === 'flip') duration = 500;
-                else if (ev.type === 'conflict') duration = (ev.colors.length * 1000) + 1000; 
+                // --- FIX: Faster Animations ---
+                let duration = 600; // Was 1000
+                if(ev.type === 'flip') duration = 300; // Was 500
+                else if (ev.type === 'conflict') duration = (ev.colors.length * 500) + 500; // Was 1000 base + 1000 per
                 setTimeout(() => {
                     const cells = boardElement.querySelectorAll('.cell');
                     if (cells[cellIdx]) {
@@ -1082,19 +1096,19 @@
                                     if(window.SoundManager) window.SoundManager.playGlass(); 
                                     cell.classList.remove('bg-white', 'bg-player-red', 'bg-player-yellow', 'bg-player-blue');
                                     cell.classList.add(COLOR_MAP[cCode].code);
-                                    cell.style.animation = 'shine-pulse 1s forwards'; 
-                                }, i * 1000);
+                                    cell.style.animation = 'shine-pulse 0.5s forwards'; // Faster pulse
+                                }, i * 500); // Faster Interval
                             });
-                            setTimeout(() => { cell.style.animation = 'vanish-anim 1s forwards'; }, colors.length * 1000);
+                            setTimeout(() => { cell.style.animation = 'vanish-anim 0.5s forwards'; }, colors.length * 500);
                         } else if (ev.type === 'success') {
                             if(window.SoundManager) window.SoundManager.playGlass();
                             cell.classList.remove('bg-white'); cell.classList.add(COLOR_MAP[ev.color].code);
-                            cell.style.animation = 'shine-pulse 1s forwards';
+                            cell.style.animation = 'shine-pulse 0.5s forwards'; // Faster
                         } else if (ev.type === 'flip') {
                             if(window.SoundManager) window.SoundManager.playGlass();
                             COLORS.forEach(c => cell.classList.remove(COLOR_MAP[c].code));
                             cell.classList.add(COLOR_MAP[ev.color].code);
-                            cell.style.animation = 'flip-anim 0.5s forwards';
+                            cell.style.animation = 'flip-anim 0.3s forwards'; // Faster
                         }
                     }
                 }, accumulatedDelay);
@@ -1103,7 +1117,10 @@
             setTimeout(() => {
                 isAnimating = false; currentBoardState = pendingBoardState;
                 renderBoard(currentBoardState, gameData);
-                if (pendingGameEndData) setTimeout(() => { showWinner(pendingGameEndData.players); pendingGameEndData = null; }, 1000); 
+                // --- FIX: Robust finish check ---
+                if (gameData.status === 'finished') {
+                     setTimeout(() => { showWinner(gameData.players); }, 300); // Fast popup
+                }
             }, accumulatedDelay);
         }
 
@@ -1230,7 +1247,8 @@
                 if (cellMoves.length > 1) {
                     const colors = cellMoves.map(m => m.color);
                     roundEvents.push({ r, c, type: 'conflict', colors: colors });
-                    totalAnimTime += (colors.length * 1000) + 1000;
+                    // --- FIX: Faster Turn Resolution Calc ---
+                    totalAnimTime += (colors.length * 500) + 500; // Was 1000s
                     board[r][c] = ''; 
                 }
             }
@@ -1247,13 +1265,13 @@
             validMoves.forEach(m => {
                 board[m.r][m.c] = m.color;
                 roundEvents.push({ r: m.r, c: m.c, color: m.color, type: 'success' });
-                totalAnimTime += 1000; 
+                totalAnimTime += 600; // Was 1000
                 if(m.isOverwrite) overwriteConsumers.add(m.id);
                 const flips = applyOthello(board, m.r, m.c, m.color);
                 flips.forEach(f => {
                     board[f.r][f.c] = m.color; 
                     roundEvents.push({ r: f.r, c: f.c, color: m.color, type: 'flip' });
-                    totalAnimTime += 500; 
+                    totalAnimTime += 300; // Was 500
                 });
             });
             let newScores = {};
@@ -1474,7 +1492,9 @@
              const content = `WINNER: ${winner.nickname} (${winner.score})\nYOUR SCORE: ${myScore}`;
              document.getElementById('modal-title').textContent = title;
              document.getElementById('modal-content').textContent = content;
-             document.getElementById('message-modal').classList.remove('hidden');
+             // Force display
+             const modal = document.getElementById('message-modal');
+             modal.classList.remove('hidden');
         }
 
         window.triggerRematch = async () => {
