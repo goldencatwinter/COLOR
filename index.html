@@ -633,7 +633,7 @@
                          hostName: myNickname
                      }
                  });
-                 alert("Invitation sent!");
+                 // No Alert
              } catch(e) {
                  console.error("Invite failed", e);
              }
@@ -1229,7 +1229,7 @@
         function watchOpenRooms() {
             if (unsubscribeOpenRooms) return;
             const gamesRef = collection(db, 'artifacts', appId, 'public', 'data', 'games');
-            const q = query(gamesRef, where('status', '==', 'waiting'), orderBy('createdAt', 'desc'), limit(20));
+            const q = query(gamesRef, where('status', '==', 'waiting'), limit(20));
             unsubscribeOpenRooms = onSnapshot(q, (snapshot) => {
                 const listEl = document.getElementById('open-rooms-list');
                 const countEl = document.getElementById('open-rooms-count');
