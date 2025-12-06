@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>COLOR - Final Optimized</title>
+    <title>COLOR - Advanced Lobby</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700;900&display=swap');
@@ -167,12 +167,20 @@
 
                     <div id="message-modal" class="hidden absolute inset-0 z-50 flex items-center justify-center backdrop-blur-[2px] bg-black/30">
                         <div class="modal-content bg-white/20 border border-white/40 p-6 w-[80%] max-w-sm text-center backdrop-blur-md shadow-[0_8px_32px_0_rgba(31,38,135,0.37)] rounded-xl relative">
-                            <button onclick="window.triggerRematch()" class="absolute top-2 right-3 text-white text-2xl font-bold p-1 leading-none hover:text-gray-300">&times;</button>
+                            <!-- X Button: Now just closes the modal -->
+                            <button onclick="document.getElementById('message-modal').classList.add('hidden')" class="absolute top-2 right-3 text-white text-2xl font-bold p-1 leading-none hover:text-gray-300">&times;</button>
+                            
                             <h3 id="modal-title" class="text-2xl font-black uppercase mb-3 tracking-tighter text-white drop-shadow-md">TITLE</h3>
                             <p id="modal-content" class="text-white mb-6 font-bold whitespace-pre-line leading-relaxed text-sm drop-shadow-sm">Content</p>
-                            <button id="modal-play-again" class="w-full bg-black hover:bg-gray-800 text-white border border-white/20 font-black py-4 text-sm tracking-[0.2em] uppercase transition-all hover:scale-105 rounded-lg shadow-xl mb-3">
-                                PLAY AGAIN (SAME MEMBERS)
-                            </button>
+                            
+                            <div class="flex flex-col gap-2 w-full">
+                                <button id="modal-play-again" class="w-full bg-black hover:bg-gray-800 text-white border border-white/20 font-black py-4 text-sm tracking-[0.2em] uppercase transition-all hover:scale-105 rounded-lg shadow-xl">
+                                    RESTART GAME
+                                </button>
+                                <button id="modal-return-lobby" onclick="window.returnToLobby()" class="w-full bg-white hover:bg-gray-100 text-black border border-black font-black py-4 text-sm tracking-[0.2em] uppercase transition-all hover:scale-105 rounded-lg shadow-xl">
+                                    RETURN TO LOBBY
+                                </button>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -484,8 +492,42 @@
             
             watchQueueList();
             watchOpenRooms();
+            startCleanupInterval(); // Start 10s cleanup loop
         }
         window.onload = init;
+
+        // --- Periodic Cleanup for Stale Rooms ---
+        function startCleanupInterval() {
+            setInterval(async () => {
+                // Every 10 seconds, find rooms that are stuck (e.g., created > 10 mins ago and still waiting) or empty
+                const gamesRef = collection(db, 'artifacts', appId, 'public', 'data', 'games');
+                const tenMinsAgo = new Date(Date.now() - 10 * 60 * 1000); 
+                
+                try {
+                    // Query for waiting rooms
+                    const q = query(gamesRef, where('status', '==', 'waiting'));
+                    const snap = await getDocs(q);
+                    
+                    snap.forEach(async (docSnap) => {
+                        const data = docSnap.data();
+                        const createdTime = data.createdAt ? data.createdAt.toDate() : new Date();
+                        
+                        // Rule 1: Delete if older than 10 mins and still waiting (Abandoned)
+                        const isOld = createdTime < tenMinsAgo;
+                        
+                        // Rule 2: Delete if it has no players (Bugged)
+                        const isEmpty = !data.players || Object.keys(data.players).length === 0;
+
+                        if (isOld || isEmpty) {
+                            console.log(`Deleting stale room: ${docSnap.id}`);
+                            await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'games', docSnap.id));
+                        }
+                    });
+                } catch (e) {
+                    console.error("Cleanup error:", e);
+                }
+            }, 10000); // 10 Seconds
+        }
 
         nicknameInput.addEventListener('input', (e) => {
             joinBtn.disabled = e.target.value.trim().length === 0;
@@ -522,7 +564,6 @@
         acceptInviteBtn.addEventListener('click', async () => {
              inviteModal.classList.add('hidden');
              if(currentInvitedGameId) {
-                 // Clear invite field first
                  await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'queue', userId), {
                     invite: deleteField()
                  });
@@ -589,7 +630,6 @@
                     lastGameMode = 'PVP'; 
                     enterGame(data.matchId);
                 }
-                // Check for Invite
                 if (data.invite && !currentInvitedGameId) {
                     currentInvitedGameId = data.invite.gameId;
                     document.getElementById('invite-host-name').textContent = data.invite.hostName;
@@ -620,7 +660,6 @@
             });
         }
 
-        // --- Host Invite Logic ---
         window.invitePlayer = async (targetId) => {
              if (!gameId || !isWaitingRoomHost) return;
              if (targetId === userId) return;
@@ -633,7 +672,6 @@
                          hostName: myNickname
                      }
                  });
-                 // No Alert
              } catch(e) {
                  console.error("Invite failed", e);
              }
@@ -655,7 +693,6 @@
                 let contentHTML = ``;
                 
                 if (isWaitingRoomHost && !isMe) {
-                    // Host View: Show Invite Button
                     contentHTML = `
                         <div class="flex items-center gap-3">
                             <span class="font-bold uppercase text-black">${nick}</span>
@@ -667,7 +704,6 @@
                     contentHTML = `<span class="font-bold uppercase">YOU (${nick})</span><span class="text-[10px] uppercase tracking-widest opacity-70">WAITING</span>`;
                     bgColor = 'bg-black text-white border-black';
                 } else {
-                    // Normal Queue View
                     const isSelected = selectedFriendIds.has(d.id);
                     contentHTML = `
                         <div class="flex items-center gap-3">
@@ -714,9 +750,6 @@
                 playersData[uid] = { nickname: nick, color: COLORS[idx], isAI: false, score: 0, overwrites: MAX_OVERWRITES, lastMove: null };
                 playerOrder.push(uid);
             });
-            if (fillAI && usersDocs.length < 3) {
-                 // Logic for AI filling omitted for brevity in PVP context, mostly unused here
-            }
             lastGameMode = 'PVP';
             const initialBoard = Array(BOARD_SIZE).fill(0).map(() => Array(BOARD_SIZE).fill(''));
             const deadLine = Date.now() + FIRST_TURN_DURATION_MS + NETWORK_BUFFER_MS;
@@ -763,6 +796,10 @@
             }
         }
 
+        window.returnToLobby = () => {
+            resetLocalStateAndUI();
+        }
+
         function resetLocalStateAndUI() {
             stopQueueWatchdog();
             if (localTimerInterval) clearInterval(localTimerInterval);
@@ -791,7 +828,12 @@
             mobileTimerContainer.classList.add('hidden');
             updateTimerDisplay("--");
             scoreList.innerHTML = '<li class="text-gray-300 text-xs uppercase tracking-widest py-2">Game not started</li>';
-            boardElement.innerHTML = `<div class="col-span-5 flex items-center justify-center h-full text-white text-xl font-bold tracking-widest uppercase bg-waiting-rainbow shadow-inner">Waiting for match</div><div id="message-modal" class="hidden absolute inset-0 z-50 flex items-center justify-center backdrop-blur-[2px] bg-black/30"><div class="modal-content bg-white/20 border border-white/40 p-6 w-[80%] max-w-sm text-center backdrop-blur-md shadow-[0_8px_32px_0_rgba(31,38,135,0.37)] rounded-xl relative"><button onclick="window.triggerRematch()" class="absolute top-2 right-3 text-white text-2xl font-bold p-1 leading-none hover:text-gray-300">&times;</button><h3 id="modal-title" class="text-2xl font-black uppercase mb-3 tracking-tighter text-white drop-shadow-md">TITLE</h3><p id="modal-content" class="text-white mb-6 font-bold whitespace-pre-line leading-relaxed text-sm drop-shadow-sm">Content</p><button id="modal-play-again" class="w-full bg-black hover:bg-gray-800 text-white border border-white/20 font-black py-4 text-sm tracking-[0.2em] uppercase transition-all hover:scale-105 rounded-lg shadow-xl mb-3">PLAY AGAIN (SAME MEMBERS)</button></div></div>`;
+            
+            // Reset modal completely
+            const modal = document.getElementById('message-modal');
+            modal.classList.add('hidden');
+            
+            boardElement.innerHTML = `<div class="col-span-5 flex items-center justify-center h-full text-white text-xl font-bold tracking-widest uppercase bg-waiting-rainbow shadow-inner">Waiting for match</div><div id="message-modal" class="hidden absolute inset-0 z-50 flex items-center justify-center backdrop-blur-[2px] bg-black/30"><div class="modal-content bg-white/20 border border-white/40 p-6 w-[80%] max-w-sm text-center backdrop-blur-md shadow-[0_8px_32px_0_rgba(31,38,135,0.37)] rounded-xl relative"><button onclick="document.getElementById('message-modal').classList.add('hidden')" class="absolute top-2 right-3 text-white text-2xl font-bold p-1 leading-none hover:text-gray-300">&times;</button><h3 id="modal-title" class="text-2xl font-black uppercase mb-3 tracking-tighter text-white drop-shadow-md">TITLE</h3><p id="modal-content" class="text-white mb-6 font-bold whitespace-pre-line leading-relaxed text-sm drop-shadow-sm">Content</p><div class="flex flex-col gap-2 w-full"><button id="modal-play-again" class="w-full bg-black hover:bg-gray-800 text-white border border-white/20 font-black py-4 text-sm tracking-[0.2em] uppercase transition-all hover:scale-105 rounded-lg shadow-xl">RESTART GAME</button><button onclick="window.returnToLobby()" class="w-full bg-white hover:bg-gray-100 text-black border border-black font-black py-4 text-sm tracking-[0.2em] uppercase transition-all hover:scale-105 rounded-lg shadow-xl">RETURN TO LOBBY</button></div></div></div>`;
              setupPlayAgainListener();
         }
 
@@ -830,19 +872,102 @@
             overwriteUIContainer.classList.remove('hidden');
         }
 
+        // --- NEW: KICK & START LOGIC ---
+        window.kickPlayerFromRoom = async (targetId) => {
+            if (!gameId || !isWaitingRoomHost) return;
+            if (targetId === userId) return; // Can't kick self
+            
+            if(!confirm("Kick this player?")) return;
+
+            const gameRef = doc(db, 'artifacts', appId, 'public', 'data', 'games', gameId);
+            try {
+                await runTransaction(db, async (transaction) => {
+                    const doc = await transaction.get(gameRef);
+                    if (!doc.exists()) return;
+                    const data = doc.data();
+                    const players = data.players;
+                    const order = data.playerOrder;
+                    
+                    delete players[targetId];
+                    const newOrder = order.filter(id => id !== targetId);
+                    
+                    transaction.update(gameRef, {
+                        players: players,
+                        playerOrder: newOrder
+                    });
+                });
+            } catch (e) { console.error("Kick failed", e); }
+        };
+
+        window.hostStartGame = async () => {
+            if (!gameId || !isWaitingRoomHost) return;
+            const deadLine = Date.now() + FIRST_TURN_DURATION_MS + NETWORK_BUFFER_MS;
+            try {
+                await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'games', gameId), {
+                    status: 'playing',
+                    turnDeadline: deadLine
+                });
+            } catch(e) { console.error("Start failed", e); }
+        };
+
         function handleGameUpdate(gameData) {
+            // Check if I was kicked
+            if (gameId && userId && !gameData.players[userId]) {
+                alert("You have been kicked from the room.");
+                resetLocalStateAndUI();
+                return;
+            }
+
             if (gameData.status === 'waiting') {
                 const waitingEl = boardElement.querySelector('.col-span-5');
                 if (waitingEl) {
-                    const pCount = Object.keys(gameData.players).length;
                     const rName = gameData.roomName || 'Room';
+                    const players = gameData.players;
+                    const pCount = Object.keys(players).length;
+                    const hostId = gameData.hostId;
+                    const isMeHost = (hostId === userId);
+
+                    let playerListHTML = '';
+                    gameData.playerOrder.forEach((pid, idx) => {
+                        const p = players[pid];
+                        if(p) {
+                            const isMe = (pid === userId);
+                            const canKick = isMeHost && !isMe;
+                            playerListHTML += `
+                                <div class="bg-black/10 p-2 mb-2 rounded flex justify-between items-center w-full max-w-xs">
+                                    <div class="flex items-center gap-2">
+                                        <div class="w-3 h-3 rounded-full ${COLOR_MAP[p.color].code}"></div>
+                                        <span class="font-bold text-sm uppercase ${isMe ? 'underline' : ''}">${p.nickname}</span>
+                                        ${pid === hostId ? '<span class="text-[10px] bg-yellow-400 text-black px-1 rounded font-bold">HOST</span>' : ''}
+                                    </div>
+                                    ${canKick ? `<button onclick="window.kickPlayerFromRoom('${pid}')" class="bg-red-500 hover:bg-red-600 text-white text-[10px] font-bold px-2 py-1 rounded uppercase">KICK</button>` : ''}
+                                </div>
+                            `;
+                        }
+                    });
+
+                    // Start Button Logic
+                    let actionHTML = '';
+                    if (isMeHost) {
+                         if (pCount === 3) {
+                             actionHTML = `<button onclick="window.hostStartGame()" class="mt-4 bg-green-600 hover:bg-green-700 text-white font-black py-3 px-8 text-xl tracking-widest uppercase rounded shadow-lg animate-pulse">START GAME</button>`;
+                         } else {
+                             actionHTML = `<p class="mt-4 text-xs font-bold text-gray-400 uppercase tracking-widest">Waiting for players (3/3 needed)</p>`;
+                         }
+                    } else {
+                        actionHTML = `<p class="mt-4 text-xs font-bold text-gray-400 uppercase tracking-widest">Waiting for host to start...</p>`;
+                    }
+
                     waitingEl.innerHTML = `
-                        <div class="flex flex-col items-center justify-center text-center">
-                            <h2 class="text-2xl font-black uppercase mb-2 text-yellow-300 drop-shadow-md">${rName}</h2>
-                            <p class="text-sm font-bold text-white/80 mb-4">Waiting for challengers... (${pCount}/3)</p>
-                            <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-white"></div>
+                        <div class="flex flex-col items-center justify-center text-center w-full p-6">
+                            <h2 class="text-2xl font-black uppercase mb-6 text-yellow-600 drop-shadow-sm border-b-2 border-yellow-400 pb-2">${rName}</h2>
+                            <div class="w-full flex flex-col items-center mb-2">
+                                ${playerListHTML}
+                            </div>
+                            ${actionHTML}
                         </div>`;
                 }
+                
                 const myData = gameData.players[userId];
                 if(myData) {
                      myNicknameDisplay.textContent = myData.nickname;
@@ -857,17 +982,17 @@
                 if (gameData.hostId === userId) {
                     isWaitingRoomHost = true;
                     myHostedRoomName = gameData.roomName;
-                    lobbyPanels.classList.remove('hidden'); // Show sidebar again
-                    document.getElementById('open-rooms-section').classList.add('hidden'); // Hide Open Rooms, only show Queue
+                    lobbyPanels.classList.remove('hidden'); 
+                    document.getElementById('open-rooms-section').classList.add('hidden'); 
                     document.getElementById('queue-section').classList.remove('hidden');
-                    watchQueueList(); // Re-activate queue listener for host
+                    watchQueueList(); 
                 }
 
                 renderScoreboard(gameData.players);
                 return;
             }
 
-            // Game Started: Clean up host UI state
+            // Game Started
             if (isWaitingRoomHost) {
                  isWaitingRoomHost = false;
                  document.getElementById('open-rooms-section').classList.remove('hidden');
@@ -1293,9 +1418,9 @@
                     const nextColor = COLORS[nextColorIndex];
                     players[userId] = { nickname: myNickname, color: nextColor, isAI: false, score: 0, overwrites: MAX_OVERWRITES, lastMove: null };
                     const newOrder = [...data.playerOrder, userId];
-                    let newStatus = 'waiting'; let newDeadline = data.turnDeadline;
-                    if (newOrder.length === 3) { newStatus = 'playing'; newDeadline = Date.now() + FIRST_TURN_DURATION_MS + NETWORK_BUFFER_MS; }
-                    transaction.update(gameRef, { players: players, playerOrder: newOrder, status: newStatus, turnDeadline: newDeadline });
+                    
+                    // REFACTORED: Do NOT set status to 'playing'. Just add player.
+                    transaction.update(gameRef, { players: players, playerOrder: newOrder });
                 });
                 enterGame(targetGameId);
             } catch (e) { console.error("Join Failed:", e); alert("Failed to join: " + e); }
