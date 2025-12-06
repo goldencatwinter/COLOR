@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>COLOR - Final Optimized</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
@@ -13,6 +13,9 @@
             background-color: #f0f0f0; 
             color: #1a1a1a;
             -webkit-tap-highlight-color: transparent;
+            touch-action: manipulation;
+            overscroll-behavior: none;
+            user-select: none;
         }
 
         /* --- Animations --- */
@@ -46,7 +49,6 @@
 
         @keyframes slideIn { from { opacity: 0; transform: translateX(-10px); } to { opacity: 1; transform: translateX(0); } }
 
-        /* 무지개 텍스트 (타이틀용) */
         .title-rainbow {
             background: linear-gradient(to right, #ff0000, #ff8800, #ffff00, #008000, #0000ff, #4b0082, #ee82ee);
             -webkit-background-clip: text;
@@ -56,41 +58,28 @@
             animation: rainbowCycle 10s linear infinite;
         }
 
-        /* 배경 무지개 */
         .bg-waiting-rainbow {
             background: linear-gradient(45deg, #ff0000, #ffa500, #ffff00, #008000, #0000ff, #4b0082, #ee82ee, #ff0000);
             background-size: 400% 400%;
             animation: rainbowCycle 20s ease infinite;
         }
 
-        /* [NEW] 버튼용 무지개 텍스트 스타일 (배경 없음) */
         .btn-text-rainbow {
-            /* 무지개 그라데이션 텍스트 효과 */
             background: linear-gradient(to right, #ff0000, #ff8800, #ffff00, #008000, #0000ff, #4b0082, #ee82ee);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
             background-clip: text;
             background-size: 200% auto;
             animation: rainbowCycle 10s linear infinite;
-            
-            /* 버튼 기본 스타일 제거 (배경 투명, 테두리 없음) */
             background-color: transparent;
             border: none;
             box-shadow: none;
-            
-            /* 인터랙션 */
             transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275), filter 0.2s;
             cursor: pointer;
         }
         
-        .btn-text-rainbow:hover {
-            transform: scale(1.15); /* 호버 시 텍스트 확대 */
-            filter: brightness(1.2);
-        }
-        
-        .btn-text-rainbow:active {
-            transform: scale(0.95);
-        }
+        .btn-text-rainbow:hover { transform: scale(1.15); filter: brightness(1.2); }
+        .btn-text-rainbow:active { transform: scale(0.95); }
 
         .overwrite-box {
             width: 14px; height: 14px;
@@ -119,22 +108,16 @@
         ::-webkit-scrollbar-thumb { background: #d4d4d4; }
     </style>
 </head>
-<body class="flex flex-col items-center justify-center min-h-screen p-2 md:p-8" onclick="SoundManager.init()">
+<body class="flex flex-col items-center justify-center min-h-screen p-2 md:p-8" onclick="SoundManager.resumeContext()">
 
     <div id="message-modal" class="hidden fixed inset-0 z-[100] flex items-center justify-center backdrop-blur-[2px] bg-black/30">
         <div class="modal-content bg-white/20 border border-white/40 p-6 w-[80%] max-w-sm text-center backdrop-blur-md shadow-[0_8px_32px_0_rgba(31,38,135,0.37)] rounded-xl relative">
             <button onclick="document.getElementById('message-modal').classList.add('hidden')" class="absolute top-2 right-3 text-white text-2xl font-bold p-1 leading-none hover:text-gray-300">&times;</button>
-            
             <h3 id="modal-title" class="text-2xl font-black uppercase mb-3 tracking-tighter text-white drop-shadow-md">TITLE</h3>
             <p id="modal-content" class="text-white mb-6 font-bold whitespace-pre-line leading-relaxed text-sm drop-shadow-sm">Content</p>
-            
             <div class="flex flex-col gap-2 w-full">
-                <button id="modal-play-again" class="w-full bg-black hover:bg-gray-800 text-white border border-white/20 font-black py-4 text-sm tracking-[0.2em] uppercase transition-all hover:scale-105 rounded-lg shadow-xl">
-                    RESTART GAME
-                </button>
-                <button id="modal-return-lobby" onclick="window.returnToLobby()" class="w-full bg-white hover:bg-gray-100 text-black border border-black font-black py-4 text-sm tracking-[0.2em] uppercase transition-all hover:scale-105 rounded-lg shadow-xl">
-                    RETURN TO LOBBY
-                </button>
+                <button id="modal-play-again" class="w-full bg-black hover:bg-gray-800 text-white border border-white/20 font-black py-4 text-sm tracking-[0.2em] uppercase transition-all hover:scale-105 rounded-lg shadow-xl">RESTART GAME</button>
+                <button id="modal-return-lobby" onclick="window.returnToLobby()" class="w-full bg-white hover:bg-gray-100 text-black border border-black font-black py-4 text-sm tracking-[0.2em] uppercase transition-all hover:scale-105 rounded-lg shadow-xl">RETURN TO LOBBY</button>
             </div>
         </div>
     </div>
@@ -156,14 +139,12 @@
             <div class="absolute top-0 left-0 w-full h-2 bg-blue-600"></div>
             <h3 class="text-2xl font-black uppercase mb-2 tracking-tighter text-blue-700">INVITATION</h3>
             <p class="text-xs font-bold text-gray-400 uppercase tracking-widest mb-6">YOU HAVE BEEN INVITED</p>
-            
             <div class="mb-8">
                 <p class="text-sm font-bold text-gray-500 mb-1">HOST</p>
                 <p id="invite-host-name" class="text-xl font-black uppercase mb-3">PLAYER</p>
                 <p class="text-sm font-bold text-gray-500 mb-1">ROOM</p>
                 <p id="invite-room-name" class="text-xl font-black uppercase text-blue-600">ROOM NAME</p>
             </div>
-
             <div class="flex gap-3">
                 <button id="accept-invite-btn" class="flex-1 bg-blue-600 text-white hover:bg-blue-700 font-bold py-4 text-sm tracking-widest uppercase transition-colors shadow-lg">YES</button>
                 <button id="decline-invite-btn" class="flex-1 bg-white text-gray-500 border-2 border-gray-200 hover:border-gray-400 font-bold py-4 text-sm tracking-widest uppercase transition-colors">NO</button>
@@ -172,9 +153,7 @@
     </div>
 
     <div id="game-container" class="w-full max-w-7xl bg-white shadow-2xl flex flex-col lg:flex-row min-h-[700px] border border-gray-300">
-        
         <div class="flex-1 flex flex-col p-6 md:p-10 relative">
-            
             <div class="mb-8 flex justify-between items-end">
                 <h1 class="text-6xl md:text-7xl font-black tracking-tighter title-rainbow">COLOR</h1>
                 <div id="desktop-timer-container" class="text-right hidden md:block">
@@ -196,7 +175,6 @@
 
             <div class="flex-1 flex items-center justify-center min-h-[400px] mb-8">
                 <div id="game-board" class="relative grid grid-cols-5 gap-px bg-gray-300 p-px w-full max-w-[600px] aspect-square border-2 border-gray-300 shadow-lg">
-                    
                     <div class="col-span-5 flex items-center justify-center h-full text-white text-xl font-bold tracking-widest uppercase bg-waiting-rainbow shadow-inner">
                         Waiting for match
                     </div>
@@ -204,7 +182,6 @@
             </div>
             
             <div class="flex flex-col items-center mt-auto w-full">
-                
                 <div id="overwrite-ui-container" class="w-full max-w-[600px] flex justify-end items-center px-2 mb-4 hidden">
                     <p class="text-xs font-bold text-gray-500 uppercase tracking-widest mr-2">OVERWRITE</p>
                     <div id="overwrite-ui-display" class="flex items-center"></div>
@@ -222,12 +199,8 @@
 
                     <div id="game-buttons" class="hidden flex flex-col gap-2 w-full">
                          <div class="flex gap-2 w-full">
-                             <button id="force-ai-btn" class="flex-1 bg-white text-black border-2 border-black hover:bg-black hover:text-white font-bold py-3 text-xs tracking-widest uppercase transition-colors">
-                                 Solo AI
-                             </button>
-                             <button id="create-room-btn" class="flex-1 bg-blue-600 text-white border-2 border-blue-600 hover:bg-blue-700 font-bold py-3 text-xs tracking-widest uppercase transition-colors">
-                                Create Open Room
-                             </button>
+                             <button id="force-ai-btn" class="flex-1 bg-white text-black border-2 border-black hover:bg-black hover:text-white font-bold py-3 text-xs tracking-widest uppercase transition-colors">Solo AI</button>
+                             <button id="create-room-btn" class="flex-1 bg-blue-600 text-white border-2 border-blue-600 hover:bg-blue-700 font-bold py-3 text-xs tracking-widest uppercase transition-colors">Create Open Room</button>
                          </div>
                          <p class="text-[10px] text-gray-400 text-center font-bold uppercase mt-2">Wait for match or select options above</p>
                     </div>
@@ -239,16 +212,13 @@
         </div>
 
         <div class="w-full lg:w-96 bg-gray-50 border-t lg:border-t-0 lg:border-l border-gray-200 p-8 flex flex-col gap-4 h-full max-h-screen overflow-hidden">
-            
             <div id="scores-section" class="hidden shrink-0">
                 <p class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2">SCORES</p>
                 <ul id="score-list" class="space-y-2">
                     <li class="text-gray-300 text-xs uppercase tracking-widest py-2">Game not started</li>
                 </ul>
             </div>
-
             <div id="lobby-panels" class="flex-1 flex flex-col gap-4 overflow-hidden min-h-0">
-                
                 <div id="queue-section" class="flex-1 flex flex-col min-h-0 bg-white border border-gray-200 p-4 shadow-sm">
                     <div class="flex justify-between items-center mb-2 border-b border-gray-100 pb-2 shrink-0">
                         <p class="text-[10px] font-bold text-gray-400 uppercase tracking-widest">QUEUE</p>
@@ -258,7 +228,6 @@
                         <p class="text-gray-300 text-xs text-center py-4 uppercase tracking-widest">No players waiting</p>
                     </div>
                 </div>
-
                 <div id="open-rooms-section" class="flex-1 flex flex-col min-h-0 bg-white border border-gray-200 p-4 shadow-sm">
                     <div class="flex justify-between items-center mb-2 border-b border-gray-100 pb-2 shrink-0">
                         <p class="text-[10px] font-bold text-blue-600 uppercase tracking-widest">OPEN ROOMS</p>
@@ -280,28 +249,24 @@
             query, where, getDocs, runTransaction, serverTimestamp, orderBy, limit, deleteField 
         } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
-        // --- Sound Manager ---
+        // --- [OPTIMIZED] Sound Manager for iOS ---
         window.SoundManager = {
             ctx: null,
             init: function() {
-                if (this.ctx) return;
-                const AudioContext = window.AudioContext || window.webkitAudioContext;
-                this.ctx = new AudioContext();
-                this.playAmbient();
-                
-                document.addEventListener('visibilitychange', async () => {
-                    if (document.visibilityState === 'hidden') {
-                        if (queueDocId && !gameId) {
-                            await leaveQueue(); 
-                            resetLocalStateAndUI(); 
-                        }
-                    }
-                });
-                window.addEventListener('beforeunload', () => {
-                    if (queueDocId && !gameId) { leaveQueue(); }
-                });
+                if (!this.ctx) {
+                    const AudioContext = window.AudioContext || window.webkitAudioContext;
+                    this.ctx = new AudioContext();
+                    this.playAmbient();
+                }
+                this.resumeContext();
+            },
+            resumeContext: function() {
+                if (this.ctx && (this.ctx.state === 'suspended' || this.ctx.state === 'interrupted')) {
+                    this.ctx.resume().catch(e => console.log("Audio resume failed", e));
+                }
             },
             playAmbient: function() {
+                if(!this.ctx) return;
                 const t = this.ctx.currentTime;
                 const gain = this.ctx.createGain();
                 gain.connect(this.ctx.destination);
@@ -328,6 +293,7 @@
             },
             playGlass: function() { 
                 if (!this.ctx) return;
+                this.resumeContext();
                 const t = this.ctx.currentTime;
                 const osc = this.ctx.createOscillator();
                 const gain = this.ctx.createGain();
@@ -340,6 +306,7 @@
                 osc.connect(gain);
                 gain.connect(this.ctx.destination);
                 osc.start(t); osc.stop(t + 1.5);
+                
                 const osc2 = this.ctx.createOscillator();
                 const gain2 = this.ctx.createGain();
                 osc2.type = 'triangle';
@@ -352,6 +319,7 @@
             },
             playConflict: function() { 
                 if (!this.ctx) return;
+                this.resumeContext();
                 const t = this.ctx.currentTime;
                 const osc = this.ctx.createOscillator();
                 const gain = this.ctx.createGain();
@@ -366,6 +334,7 @@
             },
             playTick: function() {
                 if (!this.ctx) return;
+                this.resumeContext();
                 const t = this.ctx.currentTime;
                 const osc = this.ctx.createOscillator();
                 const gain = this.ctx.createGain();
@@ -383,7 +352,6 @@
             }
         };
 
-        // --- Config ---
         const BOARD_SIZE = 5;
         const TURN_DURATION_MS = 5000; 
         const FIRST_TURN_DURATION_MS = 10000; 
@@ -415,7 +383,6 @@
         let lastProcessedTurn = 0; 
         let isAnimating = false; 
         let pendingBoardState = null; 
-        let pendingGameEndData = null; 
         let selectedFriendIds = new Set(); 
         let currentInvitedGameId = null; 
         
@@ -424,9 +391,11 @@
         let unsubscribeMyTicket = null;
         let unsubscribeOpenRooms = null;
         
-        // Host state
         let isWaitingRoomHost = false;
         let myHostedRoomName = "";
+        
+        // [FIX] Timer variable for stability
+        let activeTimerDeadline = 0;
 
         const nicknameInput = document.getElementById('nickname-input');
         const nicknameSection = document.getElementById('nickname-section');
@@ -442,7 +411,6 @@
         const scoresSection = document.getElementById('scores-section');
         const lobbyPanels = document.getElementById('lobby-panels');
         const scoreList = document.getElementById('score-list');
-        const desktopTimerContainer = document.getElementById('desktop-timer-container');
         const mobileTimerContainer = document.getElementById('mobile-timer-container');
         const myNicknameDisplay = document.getElementById('my-nickname-display');
         const myColorDisplay = document.getElementById('my-color-display'); 
@@ -503,7 +471,6 @@
         }
         window.onload = init;
 
-        // --- Periodic Cleanup for Stale Rooms ---
         function startCleanupInterval() {
             setInterval(async () => {
                 const gamesRef = collection(db, 'artifacts', appId, 'public', 'data', 'games');
@@ -528,7 +495,6 @@
             joinBtn.disabled = e.target.value.trim().length === 0;
         });
 
-        // --- Create Room Modal Logic ---
         const createRoomModal = document.getElementById('create-room-modal');
         const roomNameInput = document.getElementById('room-name-input');
         const confirmCreateBtn = document.getElementById('confirm-create-btn');
@@ -551,7 +517,6 @@
             await createPublicRoom(rName);
         });
 
-        // --- Invite Modal Logic ---
         const inviteModal = document.getElementById('invite-modal');
         const acceptInviteBtn = document.getElementById('accept-invite-btn');
         const declineInviteBtn = document.getElementById('decline-invite-btn');
@@ -559,9 +524,7 @@
         acceptInviteBtn.addEventListener('click', async () => {
              inviteModal.classList.add('hidden');
              if(currentInvitedGameId) {
-                 await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'queue', userId), {
-                    invite: deleteField()
-                 });
+                 await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'queue', userId), { invite: deleteField() });
                  await joinOpenGame(currentInvitedGameId);
                  currentInvitedGameId = null;
              }
@@ -571,9 +534,7 @@
             inviteModal.classList.add('hidden');
             currentInvitedGameId = null;
             if(queueDocId) {
-                 await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'queue', userId), {
-                    invite: deleteField()
-                 });
+                 await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'queue', userId), { invite: deleteField() });
             }
         });
 
@@ -602,9 +563,7 @@
                 queueDocId = userId;
                 startQueueWatchdog();
                 watchMyTicket(ticketRef);
-            } catch (e) {
-                resetLocalStateAndUI();
-            }
+            } catch (e) { resetLocalStateAndUI(); }
         }
 
         joinBtn.addEventListener('click', async () => {
@@ -648,18 +607,11 @@
         window.invitePlayer = async (targetId) => {
              if (!gameId || !isWaitingRoomHost) return;
              if (targetId === userId) return;
-
              try {
                  await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'queue', targetId), {
-                     invite: {
-                         gameId: gameId,
-                         roomName: myHostedRoomName,
-                         hostName: myNickname
-                     }
+                     invite: { gameId: gameId, roomName: myHostedRoomName, hostName: myNickname }
                  });
-             } catch(e) {
-                 console.error("Invite failed", e);
-             }
+             } catch(e) { console.error("Invite failed", e); }
         };
 
         function renderQueueList(docs) {
@@ -669,35 +621,21 @@
                 queueListEl.innerHTML = '<p class="text-gray-300 text-xs text-center py-8 uppercase tracking-widest">No players waiting</p>';
                 return;
             }
-            
             docs.forEach(d => {
                 const isMe = d.id === userId;
                 const nick = d.data().nickname || "Unknown";
                 const el = document.createElement('div');
                 let bgColor = 'bg-white text-gray-600 border-gray-100';
-                
                 let contentHTML = ``;
-                
                 if (isWaitingRoomHost && !isMe) {
-                    contentHTML = `
-                        <div class="flex items-center gap-3">
-                            <span class="font-bold uppercase text-black">${nick}</span>
-                        </div>
-                        <button onclick="window.invitePlayer('${d.id}')" class="text-[10px] bg-blue-600 hover:bg-blue-700 text-white font-bold px-2 py-1 rounded uppercase tracking-widest">INVITE</button>
-                    `;
+                    contentHTML = `<div class="flex items-center gap-3"><span class="font-bold uppercase text-black">${nick}</span></div><button onclick="window.invitePlayer('${d.id}')" class="text-[10px] bg-blue-600 hover:bg-blue-700 text-white font-bold px-2 py-1 rounded uppercase tracking-widest">INVITE</button>`;
                     bgColor = 'bg-white border-blue-100';
                 } else if (isMe) {
                     contentHTML = `<span class="font-bold uppercase">YOU (${nick})</span><span class="text-[10px] uppercase tracking-widest opacity-70">WAITING</span>`;
                     bgColor = 'bg-black text-white border-black';
                 } else {
-                    contentHTML = `
-                        <div class="flex items-center gap-3">
-                            <span class="font-bold uppercase text-gray-500">${nick}</span>
-                        </div>
-                        <span class="text-[10px] uppercase tracking-widest opacity-50">WAITING</span>
-                    `;
+                    contentHTML = `<div class="flex items-center gap-3"><span class="font-bold uppercase text-gray-500">${nick}</span></div><span class="text-[10px] uppercase tracking-widest opacity-50">WAITING</span>`;
                 }
-
                 el.className = `queue-item p-3 border text-xs flex justify-between items-center ${bgColor}`;
                 el.innerHTML = contentHTML;
                 queueListEl.appendChild(el);
@@ -736,9 +674,7 @@
             }
         }
 
-        window.returnToLobby = () => {
-            resetLocalStateAndUI();
-        }
+        window.returnToLobby = () => { resetLocalStateAndUI(); }
 
         function resetLocalStateAndUI() {
             stopQueueWatchdog();
@@ -749,10 +685,11 @@
             watchQueueList(); watchOpenRooms();
             
             queueDocId = null; gameId = null; myColor = null; myOverwritesLeft = MAX_OVERWRITES;
-            lastProcessedTurn = 0; isAnimating = false; pendingBoardState = null; pendingGameEndData = null;
+            lastProcessedTurn = 0; isAnimating = false; pendingBoardState = null;
             selectedCell = null; isResolving = false; lastTimerValue = ""; isMoveCommitted = false; 
             myNickname = ""; selectedFriendIds.clear(); isWaitingRoomHost = false; myHostedRoomName = "";
             currentInvitedGameId = null;
+            activeTimerDeadline = 0; // Reset timer tracking
 
             inviteModal.classList.add('hidden');
             createRoomModal.classList.add('hidden');
@@ -772,7 +709,6 @@
             scoreList.innerHTML = '<li class="text-gray-300 text-xs uppercase tracking-widest py-2">Game not started</li>';
             
             boardElement.innerHTML = `<div class="col-span-5 flex items-center justify-center h-full text-white text-xl font-bold tracking-widest uppercase bg-waiting-rainbow shadow-inner">Waiting for match</div>`;
-             
             setupPlayAgainListener();
         }
 
@@ -782,7 +718,6 @@
             await leaveQueue(); 
             if (unsubscribeQueue) { unsubscribeQueue(); unsubscribeQueue = null; }
             nicknameSection.classList.add('hidden');
-            gameButtonsDiv.classList.remove('hidden');
             gameButtonsDiv.classList.add('hidden'); 
             
             unsubscribeGame = onSnapshot(doc(db, 'artifacts', appId, 'public', 'data', 'games', gameId), (docSnap) => {
@@ -822,64 +757,35 @@
                     const data = doc.data();
                     const players = data.players;
                     const order = data.playerOrder;
-                    
                     delete players[targetId];
                     const newOrder = order.filter(id => id !== targetId);
-                    
-                    transaction.update(gameRef, {
-                        players: players,
-                        playerOrder: newOrder
-                    });
+                    transaction.update(gameRef, { players: players, playerOrder: newOrder });
                 });
             } catch (e) { console.error("Kick failed", e); }
         };
 
-        // 2명일 때 남은 자리에 AI를 넣고 시작하는 함수
         window.hostStartGameWithAI = async () => {
             if (!gameId || !isWaitingRoomHost) return;
-            
             const gameRef = doc(db, 'artifacts', appId, 'public', 'data', 'games', gameId);
             try {
                 await runTransaction(db, async (transaction) => {
                     const docSnap = await transaction.get(gameRef);
                     if (!docSnap.exists()) return;
-                    
                     const data = docSnap.data();
                     const players = data.players;
                     const existingColors = Object.values(players).map(p => p.color);
-                    
-                    // 남은 색상 찾기
                     const missingColor = COLORS.find(c => !existingColors.includes(c));
                     if (!missingColor) return; 
-
-                    // AI 플레이어 생성
                     const aiId = 'AI_BOT_' + Date.now();
                     const newPlayers = {
                         ...players,
-                        [aiId]: {
-                            nickname: "AI BOT",
-                            color: missingColor,
-                            isAI: true,
-                            score: 0,
-                            overwrites: MAX_OVERWRITES,
-                            lastMove: null
-                        }
+                        [aiId]: { nickname: "AI BOT", color: missingColor, isAI: true, score: 0, overwrites: MAX_OVERWRITES, lastMove: null }
                     };
                     const newOrder = [...data.playerOrder, aiId];
                     const deadLine = Date.now() + FIRST_TURN_DURATION_MS + NETWORK_BUFFER_MS;
-
-                    // 게임 시작 상태로 업데이트
-                    transaction.update(gameRef, {
-                        players: newPlayers,
-                        playerOrder: newOrder,
-                        status: 'playing',
-                        turnDeadline: deadLine
-                    });
+                    transaction.update(gameRef, { players: newPlayers, playerOrder: newOrder, status: 'playing', turnDeadline: deadLine });
                 });
-            } catch(e) { 
-                console.error("Start with AI failed", e); 
-                alert("Failed to start with AI.");
-            }
+            } catch(e) { console.error("Start with AI failed", e); alert("Failed to start with AI."); }
         };
 
         window.hostStartGame = async () => {
@@ -907,7 +813,6 @@
                     const pCount = Object.keys(players).length;
                     const hostId = gameData.hostId;
                     const isMeHost = (hostId === userId);
-
                     let playerListHTML = '';
                     gameData.playerOrder.forEach((pid, idx) => {
                         const p = players[pid];
@@ -922,53 +827,23 @@
                                         ${pid === hostId ? '<span class="text-[10px] bg-yellow-400 text-black px-1 rounded font-bold shadow-sm">HOST</span>' : ''}
                                     </div>
                                     ${canKick ? `<button onclick="window.kickPlayerFromRoom('${pid}')" class="bg-red-500 hover:bg-red-600 text-white text-[10px] font-bold px-2 py-1 rounded uppercase shadow-md hover:scale-105 transition-transform">KICK</button>` : ''}
-                                </div>
-                            `;
+                                </div>`;
                         }
                     });
 
-                    // [MODIFIED] Button UI Logic (Text-only Rainbow Gradient)
                     let actionHTML = '';
                     if (isMeHost) {
                          if (pCount === 3) {
-                             // 3명일 때: START GAME (배경없음, 텍스트 무지개)
-                             actionHTML = `
-                                <button onclick="window.hostStartGame()" 
-                                    class="mt-6 btn-text-rainbow text-4xl md:text-5xl py-4 px-8 tracking-widest w-full hover:scale-110 transition-transform font-black">
-                                    START GAME
-                                </button>`;
+                             actionHTML = `<button onclick="window.hostStartGame()" class="mt-6 btn-text-rainbow text-4xl md:text-5xl py-4 px-8 tracking-widest w-full hover:scale-110 transition-transform font-black">START GAME</button>`;
                          } else if (pCount === 2) {
-                             // 2명일 때: START + AI (배경없음, 텍스트 무지개)
-                             actionHTML = `
-                                <div class="flex flex-col items-center gap-2 mt-4 w-full">
-                                    <button onclick="window.hostStartGameWithAI()" 
-                                        class="btn-text-rainbow text-3xl md:text-4xl py-4 px-8 tracking-widest w-full hover:scale-110 transition-transform font-black">
-                                        START + AI (2P)
-                                    </button>
-                                    <p class="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Waiting for 3rd player...</p>
-                                </div>
-                             `;
+                             actionHTML = `<div class="flex flex-col items-center gap-2 mt-4 w-full"><button onclick="window.hostStartGameWithAI()" class="btn-text-rainbow text-3xl md:text-4xl py-4 px-8 tracking-widest w-full hover:scale-110 transition-transform font-black">START + AI (2P)</button><p class="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Waiting for 3rd player...</p></div>`;
                          } else {
-                             // 1명일 때
                              actionHTML = `<p class="mt-8 text-xs font-bold text-gray-400 uppercase tracking-widest animate-pulse">Waiting for players (1/3)...</p>`;
                          }
                     } else {
-                        actionHTML = `
-                            <div class="mt-6 flex flex-col items-center gap-2">
-                                <div class="animate-spin rounded-full h-6 w-6 border-b-2 border-gray-400"></div>
-                                <p class="text-xs font-bold text-gray-400 uppercase tracking-widest">Waiting for host to start...</p>
-                            </div>
-                        `;
+                        actionHTML = `<div class="mt-6 flex flex-col items-center gap-2"><div class="animate-spin rounded-full h-6 w-6 border-b-2 border-gray-400"></div><p class="text-xs font-bold text-gray-400 uppercase tracking-widest">Waiting for host to start...</p></div>`;
                     }
-
-                    waitingEl.innerHTML = `
-                        <div class="flex flex-col items-center justify-center text-center w-full p-6 h-full">
-                            <h2 class="text-4xl font-black uppercase mb-8 title-rainbow drop-shadow-md tracking-tighter">${rName}</h2>
-                            <div class="w-full flex flex-col items-center gap-1 mb-4">
-                                ${playerListHTML}
-                            </div>
-                            ${actionHTML}
-                        </div>`;
+                    waitingEl.innerHTML = `<div class="flex flex-col items-center justify-center text-center w-full p-6 h-full"><h2 class="text-4xl font-black uppercase mb-8 title-rainbow drop-shadow-md tracking-tighter">${rName}</h2><div class="w-full flex flex-col items-center gap-1 mb-4">${playerListHTML}</div>${actionHTML}</div>`;
                 }
                 
                 const myData = gameData.players[userId];
@@ -989,7 +864,6 @@
                     document.getElementById('queue-section').classList.remove('hidden');
                     watchQueueList(); 
                 }
-
                 renderScoreboard(gameData.players);
                 return;
             }
@@ -1013,7 +887,7 @@
             mobileTimerContainer.classList.remove('hidden');
 
             if (gameData.turn < lastProcessedTurn) {
-                lastProcessedTurn = 0; isAnimating = false; pendingGameEndData = null;
+                lastProcessedTurn = 0; isAnimating = false;
                 document.getElementById('message-modal').classList.add('hidden');
             }
 
@@ -1034,10 +908,7 @@
             if (gameData.status === 'finished') {
                 if (localTimerInterval) clearInterval(localTimerInterval);
                 updateTimerDisplay("0");
-                
-                if (!isNewTurn && !isAnimating) {
-                    showWinner(gameData.players);
-                }
+                if (!isNewTurn && !isAnimating) { showWinner(gameData.players); }
             }
 
             if (isNewTurn) {
@@ -1050,7 +921,6 @@
                 currentBoardState = JSON.parse(gameData.board);
                 renderBoard(currentBoardState, gameData);
             }
-            
             renderScoreboard(gameData.players);
             if (gameData.status === 'playing') runClientTimer(gameData.turnDeadline, gameData);
         }
@@ -1059,9 +929,7 @@
             if (!events || events.length === 0) {
                 isAnimating = false; currentBoardState = pendingBoardState;
                 renderBoard(currentBoardState, gameData);
-                if (gameData.status === 'finished') {
-                    setTimeout(() => { showWinner(gameData.players); }, 500);
-                }
+                if (gameData.status === 'finished') { setTimeout(() => { showWinner(gameData.players); }, 500); }
                 return;
             }
             let accumulatedDelay = 0;
@@ -1106,51 +974,69 @@
             setTimeout(() => {
                 isAnimating = false; currentBoardState = pendingBoardState;
                 renderBoard(currentBoardState, gameData);
-                if (gameData.status === 'finished') {
-                     setTimeout(() => { showWinner(gameData.players); }, 300); 
-                }
+                if (gameData.status === 'finished') { setTimeout(() => { showWinner(gameData.players); }, 300); }
             }, accumulatedDelay);
         }
 
+        // [FIX] Stable Timer display logic with optimized updates
         function updateTimerDisplay(text) {
             const displayText = isAnimating ? "0" : text;
+            
             if(lastTimerValue !== displayText) {
                 if(window.SoundManager && displayText !== "0" && displayText !== "--") window.SoundManager.playTick();
                 lastTimerValue = displayText;
             }
+            
             timerDisplay.textContent = displayText;
             document.getElementById('timer-display-mobile').textContent = displayText;
-            if(displayText === "0") {
-                 const cls = "font-mono font-bold leading-none text-gray-300";
-                 timerDisplay.className = "text-5xl " + cls;
-                 document.getElementById('timer-display-mobile').className = "text-4xl " + cls;
-            } else {
-                const val = parseInt(displayText);
-                let colorClass = "text-black";
-                if(val <= 2) colorClass = "text-red-600";
-                const cls = `font-mono font-bold leading-none ${colorClass}`;
-                 timerDisplay.className = "text-5xl " + cls;
-                 document.getElementById('timer-display-mobile').className = "text-4xl " + cls;
-            }
+            
+            const cls = (displayText === "0" || displayText === "--") 
+                ? "font-mono font-bold leading-none text-gray-300"
+                : `font-mono font-bold leading-none ${parseInt(displayText) <= 2 ? 'text-red-600' : 'text-black'}`;
+            
+            timerDisplay.className = "text-5xl " + cls;
+            document.getElementById('timer-display-mobile').className = "text-4xl " + cls;
         }
 
+        // [FIX] Smooth Timer Logic with Deadlock Prevention
         function runClientTimer(deadline, gameData) {
+            // Prevent timer jitter: if deadline hasn't changed, don't recreate interval
+            if (localTimerInterval && Math.abs(deadline - activeTimerDeadline) < 100) {
+                return; 
+            }
+
             if (localTimerInterval) clearInterval(localTimerInterval);
+            activeTimerDeadline = deadline;
+
             const updateTimer = () => {
-                if (isAnimating) { updateTimerDisplay("0"); return; }
+                if (isAnimating) { 
+                    updateTimerDisplay("0"); 
+                    return; 
+                }
+
                 const now = Date.now();
                 const totalDiff = deadline - now;
                 const visualDiff = totalDiff - NETWORK_BUFFER_MS;
+
                 if (visualDiff <= 500 && !isMoveCommitted && selectedCell) commitCurrentMove();
-                let secondsLeft = Math.ceil(visualDiff / 1000);
-                if (secondsLeft > 0) updateTimerDisplay(secondsLeft.toString());
-                else {
+                
+                // Mobile lag compensation: if way past deadline, force resolution
+                if (Math.ceil(visualDiff / 1000) < -5 && !isResolving) {
+                    const isHost = userId === gameData.hostId;
+                    if (isHost) resolveTurn(gameData);
+                }
+
+                if (visualDiff > 0) {
+                    const secondsLeft = Math.ceil(visualDiff / 1000);
+                    updateTimerDisplay(secondsLeft.toString());
+                } else {
                     updateTimerDisplay("0");
                     const isHost = userId === gameData.hostId;
                     const buffer = isHost ? 0 : 3000; 
                     if (!isResolving && now > deadline + buffer) resolveTurn(gameData);
                 }
             };
+
             updateTimer();
             localTimerInterval = setInterval(updateTimer, 100);
         }
@@ -1202,87 +1088,92 @@
             return null;
         }
 
+        // [FIX] Safe Turn Resolution with Try-Catch-Finally (Prevents Deadlock)
         async function resolveTurn(gameData) {
             if (isResolving) return;
-            isResolving = true;
-            let board = JSON.parse(gameData.board).map(r => [...r]);
-            const players = gameData.players;
-            let moves = [];
-            for (const pid in players) {
-                const p = players[pid]; 
-                if (p.isAI) {
-                    const aiMove = getStrategicAIMove(board, p, p.color);
-                    if (aiMove) moves.push({ id: pid, color: p.color, r: aiMove.r, c: aiMove.c, isOverwrite: aiMove.isOverwrite });
-                    else {
-                        const rand = getRandomMove(board);
-                        if(rand) moves.push({ id: pid, color: p.color, r: rand.r, c: rand.c, isOverwrite: false });
-                    }
-                } else {
-                    if (p.lastMove) moves.push({ id: pid, color: p.color, r: p.lastMove.r, c: p.lastMove.c, isOverwrite: p.lastMove.isOverwrite });
-                }
-            }
-            const movesAtPos = {};
-            moves.forEach(m => {
-                const key = `${m.r},${m.c}`;
-                if(!movesAtPos[key]) movesAtPos[key] = [];
-                movesAtPos[key].push(m);
-            });
-            const roundEvents = [];
-            let totalAnimTime = 0;
-            for (const key in movesAtPos) {
-                const cellMoves = movesAtPos[key];
-                const [r, c] = key.split(',').map(Number);
-                if (cellMoves.length > 1) {
-                    const colors = cellMoves.map(m => m.color);
-                    roundEvents.push({ r, c, type: 'conflict', colors: colors });
-                    totalAnimTime += (colors.length * 605) + 605; 
-                    board[r][c] = ''; 
-                }
-            }
-            const overwriteConsumers = new Set();
-            const validMoves = moves.filter(m => {
-                if (movesAtPos[`${m.r},${m.c}`].length > 1) return false; 
-                const currentOwner = board[m.r][m.c];
-                if (m.isOverwrite) {
-                    if (currentOwner === '' || currentOwner === m.color) return false; 
-                    if (players[m.id].overwrites <= 0) return false; 
-                    return true;
-                } else { return currentOwner === ''; }
-            });
-            validMoves.forEach(m => {
-                board[m.r][m.c] = m.color;
-                roundEvents.push({ r: m.r, c: m.c, color: m.color, type: 'success' });
-                totalAnimTime += 730; 
-                if(m.isOverwrite) overwriteConsumers.add(m.id);
-                const flips = applyOthello(board, m.r, m.c, m.color);
-                flips.forEach(f => {
-                    board[f.r][f.c] = m.color; 
-                    roundEvents.push({ r: f.r, c: f.c, color: m.color, type: 'flip' });
-                    totalAnimTime += 365; 
-                });
-            });
-            let newScores = {};
-            let finalFilled = 0;
-            for(let r=0; r<BOARD_SIZE; r++) {
-                for(let c=0; c<BOARD_SIZE; c++) {
-                    const cell = board[r][c];
-                    if(cell) { newScores[cell] = (newScores[cell] || 0) + 1; finalFilled++; }
-                }
-            }
-            const updatedPlayers = {};
-            for (const pid in players) {
-                let p = players[pid];
-                let newOverwrites = p.overwrites;
-                if (overwriteConsumers.has(pid)) newOverwrites--;
-                let isNowAI = p.isAI; let newNickname = p.nickname;
-                if (gameData.turn === 1 && !p.isAI && !p.lastMove) { isNowAI = true; newNickname = `AI (AUTO)`; }
-                updatedPlayers[pid] = { ...p, nickname: newNickname, isAI: isNowAI, lastMove: null, score: newScores[p.color] || 0, overwrites: newOverwrites };
-            }
-            const totalCells = BOARD_SIZE * BOARD_SIZE;
-            const isEnd = finalFilled >= (totalCells - 1); 
-            const nextDeadline = Date.now() + TURN_DURATION_MS + NETWORK_BUFFER_MS + totalAnimTime + 500;
-            const gameRef = doc(db, 'artifacts', appId, 'public', 'data', 'games', gameId);
+            
             try {
+                isResolving = true;
+                let board = JSON.parse(gameData.board).map(r => [...r]);
+                const players = gameData.players;
+                let moves = [];
+                for (const pid in players) {
+                    const p = players[pid]; 
+                    if (p.isAI) {
+                        const aiMove = getStrategicAIMove(board, p, p.color);
+                        // [FIX] AI Move Fallback Logic
+                        if (aiMove) moves.push({ id: pid, color: p.color, r: aiMove.r, c: aiMove.c, isOverwrite: aiMove.isOverwrite });
+                        else {
+                            const rand = getRandomMove(board);
+                            if(rand) moves.push({ id: pid, color: p.color, r: rand.r, c: rand.c, isOverwrite: false });
+                            // If no move is possible (rand is null), AI passes silently.
+                        }
+                    } else {
+                        if (p.lastMove) moves.push({ id: pid, color: p.color, r: p.lastMove.r, c: p.lastMove.c, isOverwrite: p.lastMove.isOverwrite });
+                    }
+                }
+                const movesAtPos = {};
+                moves.forEach(m => {
+                    const key = `${m.r},${m.c}`;
+                    if(!movesAtPos[key]) movesAtPos[key] = [];
+                    movesAtPos[key].push(m);
+                });
+                const roundEvents = [];
+                let totalAnimTime = 0;
+                for (const key in movesAtPos) {
+                    const cellMoves = movesAtPos[key];
+                    const [r, c] = key.split(',').map(Number);
+                    if (cellMoves.length > 1) {
+                        const colors = cellMoves.map(m => m.color);
+                        roundEvents.push({ r, c, type: 'conflict', colors: colors });
+                        totalAnimTime += (colors.length * 605) + 605; 
+                        board[r][c] = ''; 
+                    }
+                }
+                const overwriteConsumers = new Set();
+                const validMoves = moves.filter(m => {
+                    if (movesAtPos[`${m.r},${m.c}`].length > 1) return false; 
+                    const currentOwner = board[m.r][m.c];
+                    if (m.isOverwrite) {
+                        if (currentOwner === '' || currentOwner === m.color) return false; 
+                        if (players[m.id].overwrites <= 0) return false; 
+                        return true;
+                    } else { return currentOwner === ''; }
+                });
+                validMoves.forEach(m => {
+                    board[m.r][m.c] = m.color;
+                    roundEvents.push({ r: m.r, c: m.c, color: m.color, type: 'success' });
+                    totalAnimTime += 730; 
+                    if(m.isOverwrite) overwriteConsumers.add(m.id);
+                    const flips = applyOthello(board, m.r, m.c, m.color);
+                    flips.forEach(f => {
+                        board[f.r][f.c] = m.color; 
+                        roundEvents.push({ r: f.r, c: f.c, color: m.color, type: 'flip' });
+                        totalAnimTime += 365; 
+                    });
+                });
+                let newScores = {};
+                let finalFilled = 0;
+                for(let r=0; r<BOARD_SIZE; r++) {
+                    for(let c=0; c<BOARD_SIZE; c++) {
+                        const cell = board[r][c];
+                        if(cell) { newScores[cell] = (newScores[cell] || 0) + 1; finalFilled++; }
+                    }
+                }
+                const updatedPlayers = {};
+                for (const pid in players) {
+                    let p = players[pid];
+                    let newOverwrites = p.overwrites;
+                    if (overwriteConsumers.has(pid)) newOverwrites--;
+                    let isNowAI = p.isAI; let newNickname = p.nickname;
+                    if (gameData.turn === 1 && !p.isAI && !p.lastMove) { isNowAI = true; newNickname = `AI (AUTO)`; }
+                    updatedPlayers[pid] = { ...p, nickname: newNickname, isAI: isNowAI, lastMove: null, score: newScores[p.color] || 0, overwrites: newOverwrites };
+                }
+                const totalCells = BOARD_SIZE * BOARD_SIZE;
+                const isEnd = finalFilled >= (totalCells - 1); 
+                const nextDeadline = Date.now() + TURN_DURATION_MS + NETWORK_BUFFER_MS + totalAnimTime + 500;
+                const gameRef = doc(db, 'artifacts', appId, 'public', 'data', 'games', gameId);
+                
                 await runTransaction(db, async (transaction) => {
                     const freshSnap = await transaction.get(gameRef);
                     if (!freshSnap.exists()) throw "Game Over/Deleted";
@@ -1294,8 +1185,13 @@
                         lastRoundEvents: JSON.stringify(roundEvents)
                     });
                 });
-            } catch (e) { console.log("Turn resolution skipped:", e); }
-            selectedCell = null; isResolving = false;
+            } catch (e) { 
+                console.log("Turn resolution skipped/failed:", e); 
+            } finally {
+                // [CRITICAL FIX] Always release the lock to prevent permanent freeze
+                isResolving = false;
+            }
+            selectedCell = null;
         }
 
         window.handleCellClick = async (r, c) => {
@@ -1476,8 +1372,6 @@
              const content = `WINNER: ${winner.nickname} (${winner.score})\nYOUR SCORE: ${myScore}`;
              document.getElementById('modal-title').textContent = title;
              document.getElementById('modal-content').textContent = content;
-             
-             // Force display
              const modal = document.getElementById('message-modal');
              modal.classList.remove('hidden');
         }
