@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>COLOR - Room System</title>
+    <title>COLOR - Invite System</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700;900&display=swap');
@@ -22,33 +22,15 @@
             100% { background-position: 0% 50%; }
         }
 
-        @keyframes subtle-shine {
-            0% { left: -100%; opacity: 0; }
-            50% { opacity: 0.6; }
-            100% { left: 100%; opacity: 0; }
-        }
-
         @keyframes popIn {
             0% { transform: scale(0.8); opacity: 0; }
             100% { transform: scale(1); opacity: 1; }
         }
 
         @keyframes shine-pulse {
-            0% { 
-                transform: scale(0.9); 
-                filter: brightness(1.5);
-                box-shadow: 0 0 0 0 rgba(255,255,255,0.7);
-            }
-            50% { 
-                transform: scale(1.05); 
-                filter: brightness(1.2);
-                box-shadow: 0 0 20px 5px rgba(255,255,255,0.5);
-            }
-            100% { 
-                transform: scale(1); 
-                filter: brightness(1);
-                box-shadow: 0 0 0 0 rgba(255,255,255,0);
-            }
+            0% { transform: scale(0.9); filter: brightness(1.5); box-shadow: 0 0 0 0 rgba(255,255,255,0.7); }
+            50% { transform: scale(1.05); filter: brightness(1.2); box-shadow: 0 0 20px 5px rgba(255,255,255,0.5); }
+            100% { transform: scale(1); filter: brightness(1); box-shadow: 0 0 0 0 rgba(255,255,255,0); }
         }
 
         @keyframes vanish-anim {
@@ -72,16 +54,13 @@
         }
 
         .bg-waiting-rainbow {
-            background: linear-gradient(45deg, 
-                #ff0000, #ffa500, #ffff00, #008000, #0000ff, #4b0082, #ee82ee, #ff0000
-            );
+            background: linear-gradient(45deg, #ff0000, #ffa500, #ffff00, #008000, #0000ff, #4b0082, #ee82ee, #ff0000);
             background-size: 400% 400%;
             animation: rainbowCycle 20s ease infinite;
         }
 
         .overwrite-box {
-            width: 14px;
-            height: 14px;
+            width: 14px; height: 14px;
             border: 1px solid rgba(255, 255, 255, 0.5);
             box-shadow: 0 0 3px rgba(0, 0, 0, 0.4);
             margin: 0 2px;
@@ -96,27 +75,33 @@
         .text-player-yellow { color: rgb(210, 180, 0); } 
         .text-player-blue { color: rgb(0, 0, 255); }
 
-        .breaker-shine {
-            position: relative;
-            overflow: hidden;
-        }
+        .breaker-shine { position: relative; overflow: hidden; }
         .breaker-shine::after {
-            content: '';
-            position: absolute;
-            top: 0; left: -100%; width: 50%; height: 100%;
+            content: ''; position: absolute; top: 0; left: -100%; width: 50%; height: 100%;
             background: linear-gradient(to right, transparent, rgba(255,255,255,0.9), transparent);
-            transform: skewX(-25deg);
-            animation: subtle-shine 0.6s ease-out forwards;
-            pointer-events: none;
+            transform: skewX(-25deg); animation: subtle-shine 0.6s ease-out forwards; pointer-events: none;
         }
+        @keyframes subtle-shine { 0% { left: -100%; opacity: 0; } 50% { opacity: 0.6; } 100% { left: 100%; opacity: 0; } }
 
         .cell { transition: transform 0.1s ease-in-out; }
         .cell:hover:not(.occupied-immutable) { filter: brightness(0.9); cursor: pointer; }
         
         @keyframes slideIn { from { opacity: 0; transform: translateX(-10px); } to { opacity: 1; transform: translateX(0); } }
-        .room-item { animation: slideIn 0.3s ease-out forwards; }
+        .list-item { animation: slideIn 0.3s ease-out forwards; }
 
         .modal-content { animation: popIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
+
+        /* Custom Checkbox */
+        .invite-checkbox {
+            appearance: none; background-color: #fff; margin: 0; font: inherit; color: currentColor;
+            width: 1.15em; height: 1.15em; border: 2px solid currentColor; display: grid; place-content: center; cursor: pointer;
+        }
+        .invite-checkbox::before {
+            content: ""; width: 0.65em; height: 0.65em; transform: scale(0); transition: 120ms transform ease-in-out;
+            box-shadow: inset 1em 1em black; transform-origin: center;
+            clip-path: polygon(14% 44%, 0 65%, 50% 100%, 100% 16%, 80% 0%, 43% 62%);
+        }
+        .invite-checkbox:checked::before { transform: scale(1); }
 
         ::-webkit-scrollbar { width: 4px; }
         ::-webkit-scrollbar-track { background: transparent; }
@@ -159,13 +144,22 @@
                     <div id="message-modal" class="hidden absolute inset-0 z-50 flex items-center justify-center backdrop-blur-[2px] bg-black/30">
                         <div class="modal-content bg-white/20 border border-white/40 p-6 w-[80%] max-w-sm text-center backdrop-blur-md shadow-[0_8px_32px_0_rgba(31,38,135,0.37)] rounded-xl relative">
                             <button onclick="window.triggerRematch()" class="absolute top-2 right-3 text-white text-2xl font-bold p-1 leading-none hover:text-gray-300">&times;</button>
-                            
                             <h3 id="modal-title" class="text-2xl font-black uppercase mb-3 tracking-tighter text-white drop-shadow-md">TITLE</h3>
                             <p id="modal-content" class="text-white mb-6 font-bold whitespace-pre-line leading-relaxed text-sm drop-shadow-sm">Content</p>
-                            
                             <button id="modal-play-again" class="w-full bg-black hover:bg-gray-800 text-white border border-white/20 font-black py-4 text-sm tracking-[0.2em] uppercase transition-all hover:scale-105 rounded-lg shadow-xl mb-3">
                                 PLAY AGAIN (SAME MEMBERS)
                             </button>
+                        </div>
+                    </div>
+
+                    <div id="invite-modal" class="hidden absolute inset-0 z-50 flex items-center justify-center backdrop-blur-[2px] bg-black/50">
+                        <div class="modal-content bg-white border border-gray-200 p-6 w-[80%] max-w-sm text-center shadow-2xl rounded-xl">
+                            <h3 class="text-xl font-black uppercase mb-2 tracking-tighter text-black">INVITATION</h3>
+                            <p id="invite-text" class="text-gray-600 mb-6 font-bold text-sm">Join room?</p>
+                            <div class="flex gap-2">
+                                <button id="accept-invite-btn" class="flex-1 bg-black text-white py-3 font-bold uppercase tracking-widest hover:bg-gray-800">YES</button>
+                                <button id="decline-invite-btn" class="flex-1 bg-gray-200 text-black py-3 font-bold uppercase tracking-widest hover:bg-gray-300">NO</button>
+                            </div>
                         </div>
                     </div>
 
@@ -176,8 +170,7 @@
                 
                 <div id="overwrite-ui-container" class="w-full max-w-[600px] flex justify-end items-center px-2 mb-4 hidden">
                     <p class="text-xs font-bold text-gray-500 uppercase tracking-widest mr-2">OVERWRITE</p>
-                    <div id="overwrite-ui-display" class="flex items-center">
-                        </div>
+                    <div id="overwrite-ui-display" class="flex items-center"></div>
                 </div>
 
                 <div class="flex flex-col gap-3 w-full max-w-md">
@@ -191,17 +184,12 @@
                     </div>
 
                     <div id="lobby-section" class="hidden w-full flex flex-col gap-3">
-                        <input type="text" id="room-title-input" placeholder="ROOM TITLE (e.g. JOIN ME)" maxlength="15" 
+                        <input type="text" id="room-title-input" placeholder="ROOM TITLE" maxlength="15" 
                                class="w-full bg-white border-2 border-gray-300 p-4 font-bold text-center uppercase tracking-widest focus:outline-none focus:border-black transition-colors">
                         
                         <button id="create-room-btn" disabled
                                 class="w-full bg-gradient-to-r from-red-500 via-yellow-500 to-blue-500 text-white font-black py-4 text-sm tracking-widest uppercase transition-all shadow-lg hover:scale-[1.02] disabled:opacity-50 disabled:grayscale">
                             CREATE ROOM
-                        </button>
-                        
-                        <button id="back-to-login-btn" 
-                                class="w-full bg-gray-200 text-gray-600 hover:bg-gray-300 font-bold py-2 text-xs tracking-widest uppercase transition-colors">
-                            BACK
                         </button>
                     </div>
                 </div>
@@ -215,19 +203,21 @@
             
             <div id="scores-section" class="hidden">
                 <p class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2">SCORES</p>
-                <ul id="score-list" class="space-y-2">
-                    <li class="text-gray-300 text-xs uppercase tracking-widest py-2">Game not started</li>
-                </ul>
+                <ul id="score-list" class="space-y-2"></ul>
             </div>
 
-            <div id="room-list-section" class="flex-1 min-h-[200px] flex flex-col hidden">
+            <div id="right-panel-content" class="flex-1 min-h-[200px] flex flex-col hidden">
                 <div class="flex justify-between items-center mb-4 border-b border-gray-200 pb-2">
-                    <p class="text-[10px] font-bold text-gray-400 uppercase tracking-widest">OPEN ROOMS</p>
-                    <span id="room-count" class="text-xs font-bold bg-black text-white px-2 py-0.5">0</span>
+                    <p id="list-title" class="text-[10px] font-bold text-gray-400 uppercase tracking-widest">QUEUE</p>
+                    <span id="list-count" class="text-xs font-bold bg-black text-white px-2 py-0.5">0</span>
                 </div>
-                <div id="room-list" class="flex-1 overflow-y-auto space-y-2 pr-2">
-                    <p class="text-gray-300 text-xs text-center py-8 uppercase tracking-widest">No rooms created</p>
-                </div>
+                
+                <div id="dynamic-list" class="flex-1 overflow-y-auto space-y-2 pr-2">
+                    </div>
+
+                <button id="host-invite-btn" class="hidden w-full bg-black text-white mt-4 py-3 text-xs font-bold uppercase tracking-widest hover:bg-gray-800">
+                    INVITE SELECTED
+                </button>
             </div>
         </div>
     </div>
@@ -236,7 +226,7 @@
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
         import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
         import { 
-            getFirestore, doc, setDoc, updateDoc, deleteDoc, onSnapshot, collection, 
+            getFirestore, doc, setDoc, updateDoc, deleteDoc, onSnapshot, collection, deleteField,
             query, where, getDocs, runTransaction, serverTimestamp, orderBy, limit, addDoc 
         } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
@@ -252,34 +242,28 @@
                 document.addEventListener('visibilitychange', async () => {
                     if (document.visibilityState === 'hidden') {
                         if (currentRoomId && !gameId) {
-                            console.log("Background detected: Leaving room.");
                             await leaveCurrentRoom(); 
                             resetToLobby(); 
                         }
                     }
                 });
-
                 window.addEventListener('beforeunload', () => {
-                    if (currentRoomId && !gameId) {
-                        leaveCurrentRoom(); 
-                    }
+                    if (currentRoomId && !gameId) leaveCurrentRoom();
+                    // Also remove from lobby queue
+                    if (userId && !currentRoomId) deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'queue', userId));
                 });
             },
             playAmbient: function() {
                 const t = this.ctx.currentTime;
                 const gain = this.ctx.createGain();
                 gain.connect(this.ctx.destination);
-                
                 const freqs = [261.63, 329.63, 392.00, 493.88]; 
-                
                 freqs.forEach((f, i) => {
                     const osc = this.ctx.createOscillator();
                     osc.type = i % 2 === 0 ? 'sine' : 'triangle';
                     osc.frequency.value = f;
-                    
                     const oscGain = this.ctx.createGain();
                     oscGain.gain.value = 0.03; 
-                    
                     const lfo = this.ctx.createOscillator();
                     lfo.frequency.value = 0.1 + (i * 0.05);
                     const lfoGain = this.ctx.createGain();
@@ -287,87 +271,16 @@
                     lfo.connect(lfoGain);
                     lfoGain.connect(oscGain.gain);
                     lfo.start();
-
                     osc.connect(oscGain);
                     oscGain.connect(gain);
                     osc.start();
                 });
-
                 gain.gain.setValueAtTime(0, t);
                 gain.gain.linearRampToValueAtTime(0.5, t + 5); 
             },
-            playGlass: function() { 
-                if (!this.ctx) return;
-                const t = this.ctx.currentTime;
-                
-                const osc = this.ctx.createOscillator();
-                const gain = this.ctx.createGain();
-                osc.type = 'sine';
-                osc.frequency.setValueAtTime(1500, t); 
-                osc.frequency.exponentialRampToValueAtTime(1500, t + 1); 
-                
-                gain.gain.setValueAtTime(0, t);
-                gain.gain.linearRampToValueAtTime(0.4, t + 0.01); 
-                gain.gain.exponentialRampToValueAtTime(0.001, t + 1.5); 
-
-                osc.connect(gain);
-                gain.connect(this.ctx.destination);
-                osc.start(t);
-                osc.stop(t + 1.5);
-                
-                const osc2 = this.ctx.createOscillator();
-                const gain2 = this.ctx.createGain();
-                osc2.type = 'triangle';
-                osc2.frequency.setValueAtTime(3000, t);
-                
-                gain2.gain.setValueAtTime(0, t);
-                gain2.gain.linearRampToValueAtTime(0.05, t + 0.01);
-                gain2.gain.exponentialRampToValueAtTime(0.001, t + 1.0);
-                
-                gain2.connect(this.ctx.destination);
-                osc2.start(t);
-                osc2.stop(t + 1.0);
-            },
-            playConflict: function() { 
-                if (!this.ctx) return;
-                const t = this.ctx.currentTime;
-                const osc = this.ctx.createOscillator();
-                const gain = this.ctx.createGain();
-                
-                osc.type = 'sawtooth';
-                osc.frequency.setValueAtTime(100, t);
-                osc.frequency.linearRampToValueAtTime(50, t + 0.5);
-                
-                gain.gain.setValueAtTime(0.1, t);
-                gain.gain.exponentialRampToValueAtTime(0.001, t + 0.5);
-                
-                osc.connect(gain);
-                gain.connect(this.ctx.destination);
-                osc.start(t);
-                osc.stop(t + 0.5);
-            },
-            playTick: function() {
-                if (!this.ctx) return;
-                const t = this.ctx.currentTime;
-                const osc = this.ctx.createOscillator();
-                const gain = this.ctx.createGain();
-                const filter = this.ctx.createBiquadFilter();
-
-                osc.type = 'square';
-                filter.type = 'highpass';
-                filter.frequency.value = 2000;
-
-                osc.connect(filter);
-                filter.connect(gain);
-                gain.connect(this.ctx.destination);
-
-                osc.frequency.setValueAtTime(800, t);
-                gain.gain.setValueAtTime(0.15, t);
-                gain.gain.exponentialRampToValueAtTime(0.001, t + 0.05);
-
-                osc.start();
-                osc.stop(t + 0.05);
-            }
+            playGlass: function() { if (!this.ctx) return; const t = this.ctx.currentTime; const osc = this.ctx.createOscillator(); const gain = this.ctx.createGain(); osc.type = 'sine'; osc.frequency.setValueAtTime(1500, t); osc.frequency.exponentialRampToValueAtTime(1500, t + 1); gain.gain.setValueAtTime(0, t); gain.gain.linearRampToValueAtTime(0.4, t + 0.01); gain.gain.exponentialRampToValueAtTime(0.001, t + 1.5); osc.connect(gain); gain.connect(this.ctx.destination); osc.start(t); osc.stop(t + 1.5); const osc2 = this.ctx.createOscillator(); const gain2 = this.ctx.createGain(); osc2.type = 'triangle'; osc2.frequency.setValueAtTime(3000, t); gain2.gain.setValueAtTime(0, t); gain2.gain.linearRampToValueAtTime(0.05, t + 0.01); gain2.gain.exponentialRampToValueAtTime(0.001, t + 1.0); gain2.connect(this.ctx.destination); osc2.start(t); osc2.stop(t + 1.0); },
+            playConflict: function() { if (!this.ctx) return; const t = this.ctx.currentTime; const osc = this.ctx.createOscillator(); const gain = this.ctx.createGain(); osc.type = 'sawtooth'; osc.frequency.setValueAtTime(100, t); osc.frequency.linearRampToValueAtTime(50, t + 0.5); gain.gain.setValueAtTime(0.1, t); gain.gain.exponentialRampToValueAtTime(0.001, t + 0.5); osc.connect(gain); gain.connect(this.ctx.destination); osc.start(t); osc.stop(t + 0.5); },
+            playTick: function() { if (!this.ctx) return; const t = this.ctx.currentTime; const osc = this.ctx.createOscillator(); const gain = this.ctx.createGain(); const filter = this.ctx.createBiquadFilter(); osc.type = 'square'; filter.type = 'highpass'; filter.frequency.value = 2000; osc.connect(filter); filter.connect(gain); gain.connect(this.ctx.destination); osc.frequency.setValueAtTime(800, t); gain.gain.setValueAtTime(0.15, t); gain.gain.exponentialRampToValueAtTime(0.001, t + 0.05); osc.start(); osc.stop(t + 0.05); }
         };
 
         // --- Config ---
@@ -376,15 +289,12 @@
         const FIRST_TURN_DURATION_MS = 10000; 
         const NETWORK_BUFFER_MS = 1000;
         const MAX_OVERWRITES = 3; 
-        
         const COLORS = ['R', 'Y', 'B']; 
-        
         const COLOR_MAP = {
             'R': { code: 'bg-player-red', text: 'text-player-red', label: 'RED', html_color: 'rgb(255, 0, 0)' },
             'Y': { code: 'bg-player-yellow', text: 'text-player-yellow', label: 'YELLOW', html_color: 'rgb(210, 180, 0)' },
             'B': { code: 'bg-player-blue', text: 'text-player-blue', label: 'BLUE', html_color: 'rgb(0, 0, 255)' },
         };
-        
         const firebaseConfig = {
             apiKey: "AIzaSyA1DEzZvw6_63cLUk_YeWYRInZ0drIzd5Q",
             authDomain: "color-a6d38.firebaseapp.com",
@@ -393,7 +303,6 @@
             messagingSenderId: "761735384766",
             appId: "1:761735384766:web:cc52566ccafac650a558ef"
         };
-        
         const appId = 'Color-Game-V7-Conflict';
 
         let app, db, auth, userId;
@@ -407,40 +316,45 @@
         let pendingBoardState = null; 
         let pendingGameEndData = null; 
         
-        let unsubscribeRooms = null;
+        let unsubscribeList = null; // Listens to Rooms or Players
         let unsubscribeCurrentRoom = null;
         let unsubscribeGame = null;
+        let unsubscribeInvitation = null;
+
+        let selectedInvitees = new Set();
 
         // UI Elements
         const nicknameInput = document.getElementById('nickname-input');
         const loginBtn = document.getElementById('login-btn');
         const loginSection = document.getElementById('login-section');
-        
         const lobbySection = document.getElementById('lobby-section');
         const roomTitleInput = document.getElementById('room-title-input');
         const createRoomBtn = document.getElementById('create-room-btn');
-        const backToLoginBtn = document.getElementById('back-to-login-btn');
-
-        const roomListSection = document.getElementById('room-list-section');
-        const roomListEl = document.getElementById('room-list');
-        const roomCountEl = document.getElementById('room-count');
         
+        const rightPanelContent = document.getElementById('right-panel-content');
+        const listTitleEl = document.getElementById('list-title');
+        const listCountEl = document.getElementById('list-count');
+        const dynamicListEl = document.getElementById('dynamic-list');
+        const hostInviteBtn = document.getElementById('host-invite-btn');
+
         const boardElement = document.getElementById('game-board');
         const timerDisplay = document.getElementById('timer-display');
         const scoresSection = document.getElementById('scores-section');
         const scoreList = document.getElementById('score-list');
-        
-        const desktopTimerContainer = document.getElementById('desktop-timer-container');
         const mobileTimerContainer = document.getElementById('mobile-timer-container');
-        
         const myNicknameDisplay = document.getElementById('my-nickname-display');
         const myColorDisplay = document.getElementById('my-color-display'); 
         const myNicknameMobile = document.getElementById('my-nickname-mobile'); 
-
         const overwriteUIDisplay = document.getElementById('overwrite-ui-display');
         const overwriteUIContainer = document.getElementById('overwrite-ui-container');
         const waitingScreen = document.getElementById('waiting-screen');
         const roomStatusText = document.getElementById('room-status-text');
+
+        // Modal Elements
+        const inviteModal = document.getElementById('invite-modal');
+        const inviteText = document.getElementById('invite-text');
+        const acceptInviteBtn = document.getElementById('accept-invite-btn');
+        const declineInviteBtn = document.getElementById('decline-invite-btn');
 
         let currentBoardState = [];
         let selectedCell = null; 
@@ -449,7 +363,7 @@
         let lastTimerValue = ""; 
         let isMoveCommitted = false; 
 
-        // --- Strict Watchdog (Timeout) ---
+        // --- Strict Watchdog ---
         let lobbyKickTimer = null;
         const STRICT_QUEUE_TIMEOUT = 30000; 
 
@@ -459,24 +373,19 @@
                 document.addEventListener(evt, resetLobbyWatchdog);
             });
         }
-
         function stopLobbyWatchdog() {
             if (lobbyKickTimer) clearTimeout(lobbyKickTimer);
             ['mousemove', 'keydown', 'click', 'touchstart'].forEach(evt => {
                 document.removeEventListener(evt, resetLobbyWatchdog);
             });
         }
-
         function resetLobbyWatchdog() {
             if (lobbyKickTimer) clearTimeout(lobbyKickTimer);
-            
-            // If in a room but game hasn't started
             if (currentRoomId && !gameId) {
                 lobbyKickTimer = setTimeout(async () => {
-                    console.log("30s Inactivity in Lobby: Kicking user.");
                     await leaveCurrentRoom();
                     resetToLobby();
-                    alert("30초 동안 활동이 없어 대기실에서 나갔습니다.");
+                    alert("30s Inactivity: Returned to Lobby.");
                 }, STRICT_QUEUE_TIMEOUT);
             }
         }
@@ -485,42 +394,40 @@
             app = initializeApp(firebaseConfig);
             db = getFirestore(app);
             auth = getAuth(app);
-            
             try {
                 const credential = await signInAnonymously(auth);
                 userId = credential.user.uid; 
-                console.log("Logged in as:", userId);
-            } catch (error) {
-                console.error("Auth failed:", error);
-            }
-            
-            onAuthStateChanged(auth, (user) => {
-                if (user && !userId) userId = user.uid;
-            });
-
+            } catch (error) { console.error("Auth failed:", error); }
+            onAuthStateChanged(auth, (user) => { if (user && !userId) userId = user.uid; });
             mobileTimerContainer.classList.add('hidden');
             overwriteUIContainer.classList.add('hidden');
         }
         window.onload = init;
 
-        // --- 1. Login Logic ---
-        nicknameInput.addEventListener('input', (e) => {
-            loginBtn.disabled = e.target.value.trim().length === 0;
-        });
-
-        loginBtn.addEventListener('click', () => {
+        // --- 1. Login & Lobby ---
+        nicknameInput.addEventListener('input', (e) => loginBtn.disabled = e.target.value.trim().length === 0);
+        loginBtn.addEventListener('click', async () => {
             const val = nicknameInput.value.trim();
             if(!val) return;
             myNickname = val.toUpperCase().slice(0, 10);
             if(window.SoundManager) window.SoundManager.init();
             
+            // Register self in Lobby Queue (so Hosts can see me)
+            await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'queue', userId), {
+                userId: userId,
+                nickname: myNickname,
+                status: 'idle',
+                joinedAt: serverTimestamp()
+            });
+
             enterLobbyMode();
+            watchMyInvitation(); // Start listening for invitations
         });
 
         function enterLobbyMode() {
             loginSection.classList.add('hidden');
             lobbySection.classList.remove('hidden');
-            roomListSection.classList.remove('hidden');
+            rightPanelContent.classList.remove('hidden');
             
             myNicknameDisplay.textContent = myNickname;
             myNicknameMobile.textContent = myNickname; 
@@ -528,21 +435,45 @@
             roomTitleInput.disabled = false;
             createRoomBtn.disabled = true;
             
+            // In Lobby: Show Open Rooms
+            listTitleEl.textContent = "OPEN ROOMS";
+            hostInviteBtn.classList.add('hidden');
             watchRooms();
         }
-        
-        backToLoginBtn.addEventListener('click', () => {
-            if (unsubscribeRooms) unsubscribeRooms();
-            loginSection.classList.remove('hidden');
-            lobbySection.classList.add('hidden');
-            roomListSection.classList.add('hidden');
-        });
 
-        // --- 2. Room Creation Logic ---
-        roomTitleInput.addEventListener('input', (e) => {
-            createRoomBtn.disabled = e.target.value.trim().length === 0;
-        });
+        // --- 2. Invitation Listener ---
+        function watchMyInvitation() {
+            if (unsubscribeInvitation) return;
+            unsubscribeInvitation = onSnapshot(doc(db, 'artifacts', appId, 'public', 'data', 'queue', userId), (snap) => {
+                if (snap.exists()) {
+                    const data = snap.data();
+                    if (data.invitation) {
+                        showInviteModal(data.invitation);
+                    }
+                }
+            });
+        }
 
+        function showInviteModal(inviteData) {
+            inviteText.textContent = `Invitation from room "${inviteData.roomTitle}"\n(Host: ${inviteData.hostName})`;
+            inviteModal.classList.remove('hidden');
+
+            acceptInviteBtn.onclick = async () => {
+                inviteModal.classList.add('hidden');
+                // Clear invitation
+                await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'queue', userId), { invitation: deleteField() });
+                joinRoom(inviteData.roomId);
+            };
+
+            declineInviteBtn.onclick = async () => {
+                inviteModal.classList.add('hidden');
+                // Clear invitation
+                await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'queue', userId), { invitation: deleteField() });
+            };
+        }
+
+        // --- 3. Room Creation & Host View ---
+        roomTitleInput.addEventListener('input', (e) => createRoomBtn.disabled = e.target.value.trim().length === 0);
         createRoomBtn.addEventListener('click', async () => {
             const title = roomTitleInput.value.trim().toUpperCase().slice(0, 15);
             if (!title) return;
@@ -552,107 +483,200 @@
             roomTitleInput.disabled = true;
 
             try {
-                // Create Room Document
+                // Remove self from Lobby Queue (Hosts aren't idle)
+                await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'queue', userId));
+
                 const roomDoc = await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'rooms'), {
-                    title: title,
-                    hostId: userId,
+                    title: title, hostId: userId, hostName: myNickname,
                     players: [{ userId: userId, nickname: myNickname }],
-                    status: 'waiting',
-                    createdAt: serverTimestamp(),
-                    matchId: null
+                    status: 'waiting', createdAt: serverTimestamp(), matchId: null
                 });
                 
                 currentRoomId = roomDoc.id;
-                enterWaitingRoom(title);
+                enterWaitingRoomAsHost(title);
 
-            } catch(e) {
-                console.error(e);
-                alert("Failed to create room.");
-                resetToLobby();
-            }
+            } catch(e) { console.error(e); resetToLobby(); }
         });
 
-        // --- 3. Room List & Join Logic ---
-        function watchRooms() {
-            if (unsubscribeRooms) unsubscribeRooms();
+        function enterWaitingRoomAsHost(title) {
+            // UI Switch
+            lobbySection.classList.add('hidden');
+            waitingScreen.classList.remove('hidden');
+            waitingScreen.querySelector('h2').textContent = title;
+            roomStatusText.textContent = "Waiting for players... (1/3)";
+            
+            // As Host: Show Waiting Players in Queue Panel
+            listTitleEl.textContent = "WAITING PLAYERS";
+            hostInviteBtn.classList.remove('hidden');
+            selectedInvitees.clear();
+            
+            watchLobbyPlayers(); // Switch right panel to players
+            startLobbyWatchdog();
+            watchCurrentRoom();
+        }
 
+        // --- 4. Room/Player List Logic ---
+
+        // MODE A: Watch Rooms (For Lobby Users)
+        function watchRooms() {
+            if (unsubscribeList) unsubscribeList();
             const roomsRef = collection(db, 'artifacts', appId, 'public', 'data', 'rooms');
             const q = query(roomsRef, where('status', '==', 'waiting'), orderBy('createdAt', 'desc'), limit(10));
             
-            unsubscribeRooms = onSnapshot(q, (snapshot) => {
+            unsubscribeList = onSnapshot(q, (snapshot) => {
                 const docs = snapshot.docs;
                 renderRoomList(docs);
             });
         }
 
         function renderRoomList(docs) {
-            roomCountEl.textContent = docs.length;
-            roomListEl.innerHTML = '';
-
+            listCountEl.textContent = docs.length;
+            dynamicListEl.innerHTML = '';
             if (docs.length === 0) {
-                roomListEl.innerHTML = '<p class="text-gray-300 text-xs text-center py-8 uppercase tracking-widest">No open rooms</p>';
+                dynamicListEl.innerHTML = '<p class="text-gray-300 text-xs text-center py-8 uppercase tracking-widest">No open rooms</p>';
                 return;
             }
-
             docs.forEach(d => {
                 const data = d.data();
                 const playerCount = data.players ? data.players.length : 0;
                 const isFull = playerCount >= 3;
                 
                 const el = document.createElement('div');
-                el.className = "room-item p-3 border border-gray-200 bg-white flex justify-between items-center mb-2 shadow-sm transition hover:shadow-md";
-                
+                el.className = "list-item p-3 border border-gray-200 bg-white flex justify-between items-center mb-2 shadow-sm transition hover:shadow-md";
                 el.innerHTML = `
                     <div class="flex flex-col">
                         <span class="font-bold uppercase text-sm">${data.title}</span>
-                        <span class="text-[10px] text-gray-500 tracking-widest">HOST: ${data.players[0]?.nickname || 'Unknown'}</span>
+                        <span class="text-[10px] text-gray-500 tracking-widest">HOST: ${data.hostName || 'Unknown'}</span>
                     </div>
                     <div class="flex items-center gap-3">
                         <span class="font-mono font-bold text-xs ${isFull ? 'text-red-500' : 'text-green-600'}">${playerCount}/3</span>
                         <button class="bg-black text-white px-4 py-2 text-xs font-bold uppercase tracking-widest hover:bg-gray-800 disabled:opacity-50"
-                                onclick="window.joinRoom('${d.id}')" ${isFull ? 'disabled' : ''}>
-                            JOIN
-                        </button>
-                    </div>
-                `;
-                roomListEl.appendChild(el);
+                                onclick="window.joinRoom('${d.id}')" ${isFull ? 'disabled' : ''}>JOIN</button>
+                    </div>`;
+                dynamicListEl.appendChild(el);
             });
         }
 
+        // MODE B: Watch Players (For Host)
+        function watchLobbyPlayers() {
+            if (unsubscribeList) unsubscribeList();
+            const queueRef = collection(db, 'artifacts', appId, 'public', 'data', 'queue');
+            // Show all idle players (except me, but I'm deleted from queue anyway)
+            const q = query(queueRef, orderBy('joinedAt', 'desc'), limit(20));
+
+            unsubscribeList = onSnapshot(q, (snapshot) => {
+                const docs = snapshot.docs;
+                renderPlayerInviteList(docs);
+            });
+        }
+
+        function renderPlayerInviteList(docs) {
+            // Filter out self just in case
+            const players = docs.filter(d => d.id !== userId);
+            listCountEl.textContent = players.length;
+            dynamicListEl.innerHTML = '';
+            
+            if (players.length === 0) {
+                dynamicListEl.innerHTML = '<p class="text-gray-300 text-xs text-center py-8 uppercase tracking-widest">No players in lobby</p>';
+                return;
+            }
+
+            players.forEach(d => {
+                const data = d.data();
+                const isChecked = selectedInvitees.has(d.id);
+                
+                const el = document.createElement('div');
+                el.className = "list-item p-3 border border-gray-200 bg-white flex justify-between items-center mb-2 shadow-sm";
+                el.innerHTML = `
+                    <div class="flex items-center gap-3">
+                        <input type="checkbox" class="invite-checkbox" ${isChecked ? 'checked' : ''} onchange="window.toggleInvite('${d.id}')">
+                        <span class="font-bold uppercase text-sm">${data.nickname}</span>
+                    </div>
+                    <span class="text-[10px] text-gray-400 tracking-widest">IDLE</span>
+                `;
+                dynamicListEl.appendChild(el);
+            });
+        }
+
+        window.toggleInvite = (pid) => {
+            if (selectedInvitees.has(pid)) selectedInvitees.delete(pid);
+            else selectedInvitees.add(pid);
+        };
+
+        hostInviteBtn.addEventListener('click', async () => {
+            if (!currentRoomId || selectedInvitees.size === 0) return;
+            
+            hostInviteBtn.textContent = "SENDING...";
+            hostInviteBtn.disabled = true;
+
+            const roomRef = doc(db, 'artifacts', appId, 'public', 'data', 'rooms', currentRoomId);
+            const roomSnap = await getDocs(query(collection(db, 'artifacts', appId, 'public', 'data', 'rooms'), where('__name__', '==', currentRoomId)));
+            const roomData = roomSnap.docs[0].data();
+
+            const invitePromises = Array.from(selectedInvitees).map(targetId => {
+                return updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'queue', targetId), {
+                    invitation: {
+                        roomId: currentRoomId,
+                        roomTitle: roomData.title,
+                        hostName: myNickname
+                    }
+                });
+            });
+
+            await Promise.all(invitePromises);
+            
+            hostInviteBtn.textContent = "INVITE SENT";
+            setTimeout(() => {
+                hostInviteBtn.textContent = "INVITE SELECTED";
+                hostInviteBtn.disabled = false;
+                selectedInvitees.clear();
+                // Rerender to clear checks
+                const container = document.querySelectorAll('.invite-checkbox');
+                container.forEach(c => c.checked = false);
+            }, 2000);
+        });
+
+        // --- 5. Joining Room ---
         window.joinRoom = async (roomId) => {
             if (!userId) return;
-            
             try {
-                const roomRef = doc(db, 'artifacts', appId, 'public', 'data', 'rooms', roomId);
+                // Optimistic UI
+                lobbySection.classList.add('hidden');
                 
+                const roomRef = doc(db, 'artifacts', appId, 'public', 'data', 'rooms', roomId);
                 await runTransaction(db, async (transaction) => {
                     const roomDoc = await transaction.get(roomRef);
                     if (!roomDoc.exists()) throw "Room does not exist!";
-                    
                     const data = roomDoc.data();
                     if (data.players.length >= 3) throw "Room is full!";
-                    
                     const newPlayers = [...data.players, { userId: userId, nickname: myNickname }];
                     transaction.update(roomRef, { players: newPlayers });
+                    
+                    // Remove myself from Queue when joined
+                    transaction.delete(doc(db, 'artifacts', appId, 'public', 'data', 'queue', userId));
                 });
 
                 currentRoomId = roomId;
-                const roomTitle = (await getDocs(query(collection(db, 'artifacts', appId, 'public', 'data', 'rooms'), where('__name__', '==', roomId)))).docs[0]?.data().title || "ROOM";
-                enterWaitingRoom(roomTitle);
+                const roomDoc = await getDocs(query(collection(db, 'artifacts', appId, 'public', 'data', 'rooms'), where('__name__', '==', roomId)));
+                const roomTitle = roomDoc.docs[0]?.data().title || "ROOM";
+                enterWaitingRoomAsGuest(roomTitle);
 
             } catch (e) {
                 alert(e);
+                resetToLobby();
             }
         };
 
-        function enterWaitingRoom(title) {
-            // UI Switch
+        function enterWaitingRoomAsGuest(title) {
             lobbySection.classList.add('hidden');
-            roomListSection.classList.add('hidden');
-            
             waitingScreen.classList.remove('hidden');
             waitingScreen.querySelector('h2').textContent = title;
-            roomStatusText.textContent = "Waiting for players... (1/3)";
+            roomStatusText.textContent = "Waiting for Host...";
+            
+            // Guests still see Rooms (or empty), but definitely not invite list
+            listTitleEl.textContent = "OPEN ROOMS"; 
+            hostInviteBtn.classList.add('hidden');
+            watchRooms(); // Keep watching rooms or show nothing
             
             startLobbyWatchdog();
             watchCurrentRoom();
@@ -660,57 +684,31 @@
 
         function watchCurrentRoom() {
             if (!currentRoomId) return;
-            
             const roomRef = doc(db, 'artifacts', appId, 'public', 'data', 'rooms', currentRoomId);
             unsubscribeCurrentRoom = onSnapshot(roomRef, async (docSnap) => {
-                if (!docSnap.exists()) {
-                    // Room deleted or something
-                    resetToLobby();
-                    return;
-                }
-                
+                if (!docSnap.exists()) { resetToLobby(); return; }
                 const data = docSnap.data();
                 const players = data.players || [];
                 
-                // Update Waiting Text
-                roomStatusText.innerHTML = `
-                    PLAYERS (${players.length}/3)<br>
-                    <span class="text-sm font-normal opacity-80 mt-2 block">
-                        ${players.map(p => p.nickname).join(', ')}
-                    </span>
-                `;
+                roomStatusText.innerHTML = `PLAYERS (${players.length}/3)<br><span class="text-sm font-normal opacity-80 mt-2 block">${players.map(p => p.nickname).join(', ')}</span>`;
 
-                // Check Game Start
-                if (data.matchId) {
-                    // Game created!
-                    enterGame(data.matchId);
-                } else if (players.length === 3 && players[0].userId === userId) {
-                    // I am Host, and room is full -> Create Game
+                if (data.matchId) { enterGame(data.matchId); } 
+                else if (players.length === 3 && players[0].userId === userId) {
                     await startGameAsHost(players);
                 }
             });
         }
 
         async function startGameAsHost(players) {
-            // Prevent multiple triggers
             if (gameId) return; 
-
             const gamesRef = collection(db, 'artifacts', appId, 'public', 'data', 'games');
             const newGameRef = doc(gamesRef);
             const newGameId = newGameRef.id;
             
             const playersData = {};
             const playerOrder = [];
-            
             players.forEach((p, idx) => {
-                playersData[p.userId] = { 
-                    nickname: p.nickname, 
-                    color: COLORS[idx], 
-                    isAI: false, 
-                    score: 0, 
-                    overwrites: MAX_OVERWRITES, 
-                    lastMove: null
-                };
+                playersData[p.userId] = { nickname: p.nickname, color: COLORS[idx], isAI: false, score: 0, overwrites: MAX_OVERWRITES, lastMove: null };
                 playerOrder.push(p.userId);
             });
 
@@ -719,27 +717,21 @@
 
             try {
                 await runTransaction(db, async (transaction) => {
-                    // Create Game
                     transaction.set(newGameRef, {
                         status: 'playing', turn: 1, turnDeadline: deadLine,
                         board: JSON.stringify(initialBoard), players: playersData,
                         playerOrder: playerOrder, hostId: userId, createdAt: serverTimestamp(),
                         lastRoundEvents: "[]"
                     });
-                    
-                    // Update Room with matchId -> Triggers everyone to join
                     const roomRef = doc(db, 'artifacts', appId, 'public', 'data', 'rooms', currentRoomId);
                     transaction.update(roomRef, { matchId: newGameId, status: 'full' });
                 });
-            } catch (e) {
-                console.error("Error starting game:", e);
-            }
+            } catch (e) { console.error("Error starting game:", e); }
         }
 
         async function leaveCurrentRoom() {
             stopLobbyWatchdog();
             if (unsubscribeCurrentRoom) unsubscribeCurrentRoom();
-
             if (currentRoomId) {
                 const roomRef = doc(db, 'artifacts', appId, 'public', 'data', 'rooms', currentRoomId);
                 try {
@@ -747,15 +739,9 @@
                         const snap = await transaction.get(roomRef);
                         if (!snap.exists()) return;
                         const data = snap.data();
-                        
-                        // Filter me out
                         const newPlayers = data.players.filter(p => p.userId !== userId);
-                        
-                        if (newPlayers.length === 0) {
-                            transaction.delete(roomRef); // Delete if empty
-                        } else {
-                            transaction.update(roomRef, { players: newPlayers });
-                        }
+                        if (newPlayers.length === 0) transaction.delete(roomRef);
+                        else transaction.update(roomRef, { players: newPlayers });
                     });
                 } catch (e) { console.error(e); }
                 currentRoomId = null;
@@ -765,24 +751,26 @@
         function resetToLobby() {
             stopLobbyWatchdog();
             if (localTimerInterval) clearInterval(localTimerInterval);
-            
             if (unsubscribeGame) { unsubscribeGame(); unsubscribeGame = null; }
             if (unsubscribeCurrentRoom) { unsubscribeCurrentRoom(); unsubscribeCurrentRoom = null; }
 
             currentRoomId = null;
             gameId = null;
-            myColor = null;
             
+            // Register back to Lobby Queue
+            setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'queue', userId), {
+                userId: userId, nickname: myNickname, status: 'idle', joinedAt: serverTimestamp()
+            });
+
             // UI Reset
             lobbySection.classList.remove('hidden');
-            roomListSection.classList.remove('hidden');
-            
+            rightPanelContent.classList.remove('hidden');
             createRoomBtn.textContent = "CREATE ROOM";
             createRoomBtn.disabled = false;
             roomTitleInput.disabled = false;
             roomTitleInput.value = "";
             
-            waitingScreen.classList.remove('hidden'); // Shows waiting board instead of game
+            waitingScreen.classList.remove('hidden'); 
             waitingScreen.querySelector('h2').textContent = "LOBBY";
             roomStatusText.textContent = "";
 
@@ -790,23 +778,22 @@
             mobileTimerContainer.classList.add('hidden');
             overwriteUIContainer.classList.add('hidden');
             
-            // Clear board
             const cells = boardElement.querySelectorAll('.cell');
             cells.forEach(el => el.remove());
             
             document.getElementById('message-modal').classList.add('hidden');
+            inviteModal.classList.add('hidden');
             
+            // Switch List back to Room View
+            listTitleEl.textContent = "OPEN ROOMS";
+            hostInviteBtn.classList.add('hidden');
             watchRooms();
         }
 
-        // --- 4. Game Logic (Adapted) ---
-
         async function enterGame(id) {
             stopLobbyWatchdog();
-            if (unsubscribeCurrentRoom) unsubscribeCurrentRoom(); // Stop listening to room
-            
+            if (unsubscribeCurrentRoom) unsubscribeCurrentRoom(); 
             gameId = id;
-            
             unsubscribeGame = onSnapshot(doc(db, 'artifacts', appId, 'public', 'data', 'games', gameId), (docSnap) => {
                 if(!docSnap.exists()) {
                     if(localTimerInterval) clearInterval(localTimerInterval);
@@ -815,8 +802,7 @@
                 }
                 handleGameUpdate(docSnap.data());
             });
-            
-            waitingScreen.classList.add('hidden'); // Hide waiting screen
+            waitingScreen.classList.add('hidden'); 
             scoresSection.classList.remove('hidden');
             mobileTimerContainer.classList.remove('hidden'); 
         }
@@ -826,18 +812,14 @@
             for (let i = 0; i < MAX_OVERWRITES; i++) {
                 const box = document.createElement('div');
                 box.className = 'overwrite-box';
-                if (i < overwritesLeft) {
-                    box.classList.add('bg-waiting-rainbow');
-                } else {
-                    box.style.backgroundColor = '#d1d5db'; 
-                }
+                if (i < overwritesLeft) box.classList.add('bg-waiting-rainbow');
+                else box.style.backgroundColor = '#d1d5db'; 
                 overwriteUIDisplay.appendChild(box);
             }
             overwriteUIContainer.classList.remove('hidden');
         }
 
         function handleGameUpdate(gameData) {
-            // ... (Same logic as before) ...
             const myPlayerData = gameData.players[userId];
             if (myPlayerData && myPlayerData.isAI) {
                 alert("You have been removed for missing the first turn.");
@@ -846,17 +828,14 @@
                 resetToLobby();
                 return; 
             }
-
             const myData = gameData.players[userId];
             if (myData) {
                 myColor = myData.color;
                 myOverwritesLeft = myData.overwrites;
                 const cInfo = COLOR_MAP[myColor];
-                
                 myNicknameDisplay.textContent = myData.nickname;
                 myNicknameMobile.textContent = myData.nickname;
                 myNicknameMobile.style.color = cInfo.html_color;
-                
                 myColorDisplay.textContent = cInfo.label;
                 renderOverwriteUI(myOverwritesLeft);
             } else {
@@ -865,29 +844,22 @@
                  overwriteUIContainer.classList.add('hidden');
             }
 
-            // DETECT REMATCH (RESET)
             if (gameData.turn < lastProcessedTurn) {
                 lastProcessedTurn = 0;
                 isAnimating = false;
                 pendingGameEndData = null;
                 document.getElementById('message-modal').classList.add('hidden');
             }
-            
             if (gameData.status === 'finished') {
                 if (localTimerInterval) clearInterval(localTimerInterval);
                 updateTimerDisplay("0");
-                
-                if (gameData.turn > lastProcessedTurn) {
-                    pendingGameEndData = gameData;
-                } else if (!isAnimating) {
-                    showWinner(gameData.players);
-                }
+                if (gameData.turn > lastProcessedTurn) pendingGameEndData = gameData;
+                else if (!isAnimating) showWinner(gameData.players);
             }
 
             if (gameData.turn > lastProcessedTurn) {
                 isMoveCommitted = false;
                 selectedCell = null;
-
                 if (gameData.lastRoundEvents && gameData.turn > 1) { 
                     const events = JSON.parse(gameData.lastRoundEvents);
                     pendingBoardState = JSON.parse(gameData.board);
@@ -902,54 +874,34 @@
                 currentBoardState = JSON.parse(gameData.board);
                 renderBoard(currentBoardState, gameData);
             }
-
             renderScoreboard(gameData.players);
-
-            if (gameData.status === 'playing') {
-                runClientTimer(gameData.turnDeadline, gameData);
-            }
+            if (gameData.status === 'playing') runClientTimer(gameData.turnDeadline, gameData);
         }
-
-        // ... (Animations, Timer, Move Logic remain identical) ...
 
         function triggerSequentialAnimations(events, gameData) {
             if (!events || events.length === 0) {
                 isAnimating = false;
                 currentBoardState = pendingBoardState;
                 renderBoard(currentBoardState, gameData);
-                
-                if (pendingGameEndData) {
-                    setTimeout(() => {
-                        showWinner(pendingGameEndData.players);
-                        pendingGameEndData = null;
-                    }, 1000); 
-                }
+                if (pendingGameEndData) { setTimeout(() => { showWinner(pendingGameEndData.players); pendingGameEndData = null; }, 1000); }
                 return;
             }
-            
             let accumulatedDelay = 0;
-
             events.forEach((ev, index) => {
                 const cellIdx = (ev.r * BOARD_SIZE) + ev.c;
                 let duration = 1000;
                 if(ev.type === 'flip') duration = 500;
-                else if (ev.type === 'conflict') {
-                    duration = (ev.colors.length * 1000) + 1000; 
-                }
+                else if (ev.type === 'conflict') duration = (ev.colors.length * 1000) + 1000; 
 
                 setTimeout(() => {
                     const cells = boardElement.querySelectorAll('.cell');
                     if (cells[cellIdx]) {
                         const cell = cells[cellIdx];
-                        cell.style.animation = 'none';
-                        cell.offsetHeight; 
-                        cell.style.animation = null; 
-
+                        cell.style.animation = 'none'; cell.offsetHeight; cell.style.animation = null; 
                         if (ev.type === 'conflict') {
                             if(window.SoundManager) window.SoundManager.playConflict();
                             const sortOrder = ['R', 'Y', 'B'];
                             const colors = (ev.colors || []).sort((a, b) => sortOrder.indexOf(a) - sortOrder.indexOf(b));
-                            
                             colors.forEach((cCode, i) => {
                                 setTimeout(() => {
                                     if(window.SoundManager) window.SoundManager.playGlass(); 
@@ -958,16 +910,10 @@
                                     cell.style.animation = 'shine-pulse 1s forwards'; 
                                 }, i * 1000);
                             });
-
-                            setTimeout(() => {
-                                cell.style.animation = 'vanish-anim 1s forwards';
-                            }, colors.length * 1000);
-
+                            setTimeout(() => { cell.style.animation = 'vanish-anim 1s forwards'; }, colors.length * 1000);
                         } else if (ev.type === 'success') {
                             if(window.SoundManager) window.SoundManager.playGlass();
-                            cell.classList.remove('bg-white');
-                            cell.classList.add(COLOR_MAP[ev.color].code);
-                            cell.style.animation = 'shine-pulse 1s forwards';
+                            cell.classList.remove('bg-white'); cell.classList.add(COLOR_MAP[ev.color].code); cell.style.animation = 'shine-pulse 1s forwards';
                         } else if (ev.type === 'flip') {
                             if(window.SoundManager) window.SoundManager.playGlass();
                             COLORS.forEach(c => cell.classList.remove(COLOR_MAP[c].code));
@@ -976,35 +922,24 @@
                         }
                     }
                 }, accumulatedDelay);
-
                 accumulatedDelay += duration;
             });
-
             setTimeout(() => {
                 isAnimating = false;
                 currentBoardState = pendingBoardState;
                 renderBoard(currentBoardState, gameData);
-
-                if (pendingGameEndData) {
-                    setTimeout(() => {
-                        showWinner(pendingGameEndData.players);
-                        pendingGameEndData = null;
-                    }, 1000); 
-                }
+                if (pendingGameEndData) { setTimeout(() => { showWinner(pendingGameEndData.players); pendingGameEndData = null; }, 1000); }
             }, accumulatedDelay);
         }
 
         function updateTimerDisplay(text) {
             const displayText = isAnimating ? "0" : text;
             if(lastTimerValue !== displayText) {
-                if(window.SoundManager && displayText !== "0" && displayText !== "--") {
-                    window.SoundManager.playTick();
-                }
+                if(window.SoundManager && displayText !== "0" && displayText !== "--") window.SoundManager.playTick();
                 lastTimerValue = displayText;
             }
             timerDisplay.textContent = displayText;
             document.getElementById('timer-display-mobile').textContent = displayText;
-            
             if(displayText === "0") {
                  const cls = "font-mono font-bold leading-none text-gray-300";
                  timerDisplay.className = "text-5xl " + cls;
@@ -1021,38 +956,21 @@
 
         function runClientTimer(deadline, gameData) {
             if (localTimerInterval) clearInterval(localTimerInterval);
-            
             const updateTimer = () => {
-                if (isAnimating) {
-                    updateTimerDisplay("0");
-                    return;
-                }
-                
+                if (isAnimating) { updateTimerDisplay("0"); return; }
                 const now = Date.now();
                 const totalDiff = deadline - now;
                 const visualDiff = totalDiff - NETWORK_BUFFER_MS;
-                
-                // --- Commit move logic ---
-                if (visualDiff <= 500 && !isMoveCommitted && selectedCell) {
-                    commitCurrentMove();
-                }
-
+                if (visualDiff <= 500 && !isMoveCommitted && selectedCell) commitCurrentMove();
                 let secondsLeft = Math.ceil(visualDiff / 1000);
-
-                if (secondsLeft > 0) {
-                    updateTimerDisplay(secondsLeft.toString());
-                } else {
+                if (secondsLeft > 0) updateTimerDisplay(secondsLeft.toString());
+                else {
                     updateTimerDisplay("0");
-                    
                     const isHost = userId === gameData.hostId;
                     const buffer = isHost ? 0 : 3000; 
-
-                    if (!isResolving && now > deadline + buffer) {
-                        resolveTurn(gameData);
-                    }
+                    if (!isResolving && now > deadline + buffer) resolveTurn(gameData);
                 }
             };
-            
             updateTimer();
             localTimerInterval = setInterval(updateTimer, 100);
         }
@@ -1060,13 +978,8 @@
         async function commitCurrentMove() {
             if (!gameId || !userId || !selectedCell || isMoveCommitted) return;
             isMoveCommitted = true; 
-            try {
-                await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'games', gameId), {
-                    [`players.${userId}.lastMove`]: selectedCell
-                });
-            } catch (e) {
-                console.error("Failed to commit move:", e);
-            }
+            try { await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'games', gameId), { [`players.${userId}.lastMove`]: selectedCell }); } 
+            catch (e) { console.error("Failed to commit move:", e); }
         }
 
         async function resolveTurn(gameData) {
@@ -1075,24 +988,14 @@
             let board = JSON.parse(gameData.board).map(r => [...r]);
             const players = gameData.players;
             let moves = [];
-            
             for (const pid in players) {
                 const p = players[pid]; 
-                if (p.lastMove) {
-                    moves.push({ id: pid, color: p.color, r: p.lastMove.r, c: p.lastMove.c, isOverwrite: p.lastMove.isOverwrite });
-                }
+                if (p.lastMove) moves.push({ id: pid, color: p.color, r: p.lastMove.r, c: p.lastMove.c, isOverwrite: p.lastMove.isOverwrite });
             }
-
             const movesAtPos = {};
-            moves.forEach(m => {
-                const key = `${m.r},${m.c}`;
-                if(!movesAtPos[key]) movesAtPos[key] = [];
-                movesAtPos[key].push(m);
-            });
-            
+            moves.forEach(m => { const key = `${m.r},${m.c}`; if(!movesAtPos[key]) movesAtPos[key] = []; movesAtPos[key].push(m); });
             const roundEvents = [];
             let totalAnimTime = 0;
-
             for (const key in movesAtPos) {
                 const cellMoves = movesAtPos[key];
                 const [r, c] = key.split(',').map(Number);
@@ -1103,7 +1006,6 @@
                     board[r][c] = ''; 
                 }
             }
-
             const overwriteConsumers = new Set();
             const validMoves = moves.filter(m => {
                 if (movesAtPos[`${m.r},${m.c}`].length > 1) return false; 
@@ -1112,18 +1014,13 @@
                     if (currentOwner === '' || currentOwner === m.color) return false; 
                     if (players[m.id].overwrites <= 0) return false; 
                     return true;
-                } else {
-                    return currentOwner === '';
-                }
+                } else return currentOwner === '';
             });
-
             validMoves.forEach(m => {
                 board[m.r][m.c] = m.color;
                 roundEvents.push({ r: m.r, c: m.c, color: m.color, type: 'success' });
                 totalAnimTime += 1000; 
-
                 if(m.isOverwrite) overwriteConsumers.add(m.id);
-                
                 const flips = applyOthello(board, m.r, m.c, m.color);
                 flips.forEach(f => {
                     board[f.r][f.c] = m.color; 
@@ -1131,71 +1028,42 @@
                     totalAnimTime += 500; 
                 });
             });
-
             let newScores = {};
             let finalFilled = 0;
-            for(let r=0; r<BOARD_SIZE; r++) {
-                for(let c=0; c<BOARD_SIZE; c++) {
-                    const cell = board[r][c];
-                    if(cell) { newScores[cell] = (newScores[cell] || 0) + 1; finalFilled++; }
-                }
-            }
-
+            for(let r=0; r<BOARD_SIZE; r++) { for(let c=0; c<BOARD_SIZE; c++) { const cell = board[r][c]; if(cell) { newScores[cell] = (newScores[cell] || 0) + 1; finalFilled++; } } }
             const updatedPlayers = {};
             for (const pid in players) {
                 let p = players[pid];
                 let newOverwrites = p.overwrites;
                 if (overwriteConsumers.has(pid)) newOverwrites--;
-                
                 let isNowAI = p.isAI;
                 let newNickname = p.nickname;
-                
-                // Convert to AI if missed (Turn 1 only logic kept simplistic)
-                if (gameData.turn === 1 && !p.isAI && !p.lastMove) {
-                    isNowAI = true; 
-                    newNickname = `AI (AUTO)`; 
-                }
-
-                updatedPlayers[pid] = { 
-                    ...p, 
-                    nickname: newNickname,
-                    isAI: isNowAI,
-                    lastMove: null, 
-                    score: newScores[p.color] || 0, 
-                    overwrites: newOverwrites
-                };
+                if (gameData.turn === 1 && !p.isAI && !p.lastMove) { isNowAI = true; newNickname = `AI (AUTO)`; }
+                updatedPlayers[pid] = { ...p, nickname: newNickname, isAI: isNowAI, lastMove: null, score: newScores[p.color] || 0, overwrites: newOverwrites };
             }
-
             const totalCells = BOARD_SIZE * BOARD_SIZE;
             const isEnd = finalFilled >= (totalCells - 1); 
             const nextDeadline = Date.now() + TURN_DURATION_MS + NETWORK_BUFFER_MS + totalAnimTime + 500;
-
             const gameRef = doc(db, 'artifacts', appId, 'public', 'data', 'games', gameId);
             try {
                 await runTransaction(db, async (transaction) => {
                     const freshSnap = await transaction.get(gameRef);
                     if (!freshSnap.exists()) throw "Game Over/Deleted";
-                    
                     const freshData = freshSnap.data();
                     if (freshData.turn > gameData.turn) return;
-
                     transaction.update(gameRef, {
                         board: JSON.stringify(board), players: updatedPlayers,
                         turn: gameData.turn + 1, turnDeadline: nextDeadline, status: isEnd ? 'finished' : 'playing',
                         lastRoundEvents: JSON.stringify(roundEvents)
                     });
                 });
-            } catch (e) {
-                console.log("Turn resolution skipped or failed:", e);
-            }
-
+            } catch (e) { console.log("Turn resolution skipped or failed:", e); }
             selectedCell = null;
             isResolving = false;
         }
 
         window.handleCellClick = async (r, c) => {
             if (!gameId || !myColor || isResolving || isAnimating || isMoveCommitted) return;
-
             const cellColor = currentBoardState[r][c];
             let isOverwrite = false;
             if (cellColor !== '') {
@@ -1203,7 +1071,6 @@
                 if (myOverwritesLeft <= 0) return; 
                 isOverwrite = true;
             }
-            
             selectedCell = { r, c, isOverwrite };
             renderBoard(currentBoardState, { status: 'playing' }); 
         };
@@ -1211,7 +1078,6 @@
         function renderBoard(board, gameData) {
             const cells = boardElement.querySelectorAll('.cell');
             cells.forEach(el => el.remove());
-            
             const frag = document.createDocumentFragment();
             for (let r = 0; r < BOARD_SIZE; r++) {
                 for (let c = 0; c < BOARD_SIZE; c++) {
@@ -1221,17 +1087,12 @@
                     if (cellVal) {
                         div.className += ` ${COLOR_MAP[cellVal].code} occupied-immutable`;
                         if (gameData.status === 'playing' && myColor && cellVal !== myColor && myOverwritesLeft > 0) div.style.cursor = "crosshair";
-                    } else {
-                        div.classList.add('bg-white');
-                    }
+                    } else div.classList.add('bg-white');
                     if (gameData.status === 'playing' && myColor && !isAnimating) {
                         if (selectedCell && selectedCell.r === r && selectedCell.c === c) {
                             div.className = `cell w-full h-full flex items-center justify-center text-white font-bold text-lg ${COLOR_MAP[myColor].code}`;
-                            if (selectedCell.isOverwrite) {
-                                div.classList.add('breaker-shine', 'ring-4', 'ring-inset', 'ring-black');
-                            } else {
-                                div.classList.add('ring-4', 'ring-inset', 'ring-black/10');
-                            }
+                            if (selectedCell.isOverwrite) div.classList.add('breaker-shine', 'ring-4', 'ring-inset', 'ring-black');
+                            else div.classList.add('ring-4', 'ring-inset', 'ring-black/10');
                         } else {
                             const isEnemy = cellVal && cellVal !== myColor;
                             if (!cellVal || (isEnemy && myOverwritesLeft > 0)) div.onclick = () => window.handleCellClick(r, c);
@@ -1270,10 +1131,7 @@
                 while(nr>=0 && nr<BOARD_SIZE && nc>=0 && nc<BOARD_SIZE) {
                     const cellColor = board[nr][nc];
                     if(cellColor === '') break; 
-                    if(cellColor === color) {
-                        foundOwnColor = true;
-                        break; 
-                    }
+                    if(cellColor === color) { foundOwnColor = true; break; }
                     flippable.push({r:nr, c:nc});
                     nr += dr; nc += dc;
                 }
@@ -1293,16 +1151,12 @@
              document.getElementById('message-modal').classList.remove('hidden');
         }
 
-        // Rematch (Restart Game within Game Room)
         window.triggerRematch = async () => {
              document.getElementById('message-modal').classList.add('hidden');
-             
              if (!gameId) return;
-             
              const gameRef = doc(db, 'artifacts', appId, 'public', 'data', 'games', gameId);
              const deadLine = Date.now() + FIRST_TURN_DURATION_MS + NETWORK_BUFFER_MS;
              const initialBoard = Array(BOARD_SIZE).fill(0).map(() => Array(BOARD_SIZE).fill(''));
-             
              try {
                  await runTransaction(db, async (transaction) => {
                     const sfDoc = await transaction.get(gameRef);
@@ -1311,34 +1165,20 @@
                     const players = data.players;
                     const newPlayers = {};
                     for (const pid in players) {
-                        newPlayers[pid] = {
-                            ...players[pid],
-                            score: 0,
-                            overwrites: MAX_OVERWRITES,
-                            lastMove: null
-                        };
+                        newPlayers[pid] = { ...players[pid], score: 0, overwrites: MAX_OVERWRITES, lastMove: null };
                     }
                     transaction.update(gameRef, {
-                        status: 'playing',
-                        turn: 1,
-                        turnDeadline: deadLine,
-                        board: JSON.stringify(initialBoard),
-                        players: newPlayers,
-                        lastRoundEvents: "[]"
+                        status: 'playing', turn: 1, turnDeadline: deadLine,
+                        board: JSON.stringify(initialBoard), players: newPlayers, lastRoundEvents: "[]"
                     });
                  });
-             } catch (e) {
-                 console.error("Rematch failed:", e);
-                 resetToLobby();
-             }
+             } catch (e) { console.error("Rematch failed:", e); resetToLobby(); }
         };
-
         function setupPlayAgainListener() {
             const btn = document.getElementById('modal-play-again');
             if(btn) btn.onclick = () => window.triggerRematch();
         }
         setupPlayAgainListener();
-
     </script>
 </body>
 </html>
