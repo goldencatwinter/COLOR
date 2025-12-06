@@ -492,16 +492,16 @@
             
             watchQueueList();
             watchOpenRooms();
-            startCleanupInterval(); // Start 10s cleanup loop
+            startCleanupInterval(); // Start cleanup loop
         }
         window.onload = init;
 
         // --- Periodic Cleanup for Stale Rooms ---
         function startCleanupInterval() {
             setInterval(async () => {
-                // Every 10 seconds, find rooms that are stuck (e.g., created > 10 mins ago and still waiting) or empty
+                // Every 5 seconds, find rooms that are stuck (e.g., created > 30 seconds ago and still waiting) or empty
                 const gamesRef = collection(db, 'artifacts', appId, 'public', 'data', 'games');
-                const tenMinsAgo = new Date(Date.now() - 10 * 60 * 1000); 
+                const thirtySecondsAgo = new Date(Date.now() - 30 * 1000); 
                 
                 try {
                     // Query for waiting rooms
@@ -512,13 +512,13 @@
                         const data = docSnap.data();
                         const createdTime = data.createdAt ? data.createdAt.toDate() : new Date();
                         
-                        // Rule 1: Delete if older than 10 mins and still waiting (Abandoned)
-                        const isOld = createdTime < tenMinsAgo;
+                        // Rule 1: Delete if older than 30 seconds and still waiting (Abandoned/Timeout)
+                        const isStale = createdTime < thirtySecondsAgo;
                         
                         // Rule 2: Delete if it has no players (Bugged)
                         const isEmpty = !data.players || Object.keys(data.players).length === 0;
 
-                        if (isOld || isEmpty) {
+                        if (isStale || isEmpty) {
                             console.log(`Deleting stale room: ${docSnap.id}`);
                             await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'games', docSnap.id));
                         }
@@ -526,7 +526,7 @@
                 } catch (e) {
                     console.error("Cleanup error:", e);
                 }
-            }, 10000); // 10 Seconds
+            }, 5000); // Check every 5 seconds
         }
 
         nicknameInput.addEventListener('input', (e) => {
@@ -1028,39 +1028,36 @@
                  overwriteUIContainer.classList.add('hidden');
             }
             
+            // --- FIX: Reliable Game Over Logic ---
+            // Determine if a new turn animation is needed
+            const isNewTurn = gameData.turn > lastProcessedTurn;
+
+            // Handle Finished Status
             if (gameData.status === 'finished') {
                 if (localTimerInterval) clearInterval(localTimerInterval);
                 updateTimerDisplay("0");
-                if (gameData.turn > lastProcessedTurn) pendingGameEndData = gameData;
                 
-                // --- FIX: Safely show winner if no animation is running ---
-                if (!isAnimating) {
+                // If NO new turn animation is pending, show result immediately.
+                // If animation IS pending, the callback in triggerSequentialAnimations will handle it.
+                if (!isNewTurn && !isAnimating) {
                     showWinner(gameData.players);
-                } else {
-                    // --- SAFEGUARD: Even if animating, force show after timeout ---
-                    setTimeout(() => {
-                        const modal = document.getElementById('message-modal');
-                        if(modal.classList.contains('hidden')) showWinner(gameData.players);
-                    }, 4000);
                 }
             }
 
-            if (gameData.turn > lastProcessedTurn) {
+            if (isNewTurn) {
+                // Start Animation
                 isMoveCommitted = false; selectedCell = null;
-                if (gameData.lastRoundEvents && gameData.turn > 1) { 
-                    const events = JSON.parse(gameData.lastRoundEvents);
-                    pendingBoardState = JSON.parse(gameData.board);
-                    isAnimating = true;
-                    triggerSequentialAnimations(events, gameData);
-                } else {
-                    currentBoardState = JSON.parse(gameData.board);
-                    renderBoard(currentBoardState, gameData);
-                }
+                isAnimating = true;
+                // Important: Pass the LATEST gameData to the animation function
+                triggerSequentialAnimations(JSON.parse(gameData.lastRoundEvents || "[]"), gameData);
+                pendingBoardState = JSON.parse(gameData.board); // Store pending state
                 lastProcessedTurn = gameData.turn;
             } else if (!isAnimating) {
+                // Just render the static board
                 currentBoardState = JSON.parse(gameData.board);
                 renderBoard(currentBoardState, gameData);
             }
+            
             renderScoreboard(gameData.players);
             if (gameData.status === 'playing') runClientTimer(gameData.turnDeadline, gameData);
         }
@@ -1078,10 +1075,10 @@
             let accumulatedDelay = 0;
             events.forEach((ev, index) => {
                 const cellIdx = (ev.r * BOARD_SIZE) + ev.c;
-                // --- FIX: Faster Animations ---
-                let duration = 600; // Was 1000
-                if(ev.type === 'flip') duration = 300; // Was 500
-                else if (ev.type === 'conflict') duration = (ev.colors.length * 500) + 500; // Was 1000 base + 1000 per
+                // --- FIX: Faster Animations (10% Slower than previous fast version) ---
+                let duration = 660; // Was 600
+                if(ev.type === 'flip') duration = 330; // Was 300
+                else if (ev.type === 'conflict') duration = (ev.colors.length * 550) + 550; // Was 500/500
                 setTimeout(() => {
                     const cells = boardElement.querySelectorAll('.cell');
                     if (cells[cellIdx]) {
@@ -1096,19 +1093,19 @@
                                     if(window.SoundManager) window.SoundManager.playGlass(); 
                                     cell.classList.remove('bg-white', 'bg-player-red', 'bg-player-yellow', 'bg-player-blue');
                                     cell.classList.add(COLOR_MAP[cCode].code);
-                                    cell.style.animation = 'shine-pulse 0.5s forwards'; // Faster pulse
-                                }, i * 500); // Faster Interval
+                                    cell.style.animation = 'shine-pulse 0.55s forwards'; // Slower pulse
+                                }, i * 550); // Slower Interval
                             });
-                            setTimeout(() => { cell.style.animation = 'vanish-anim 0.5s forwards'; }, colors.length * 500);
+                            setTimeout(() => { cell.style.animation = 'vanish-anim 0.55s forwards'; }, colors.length * 550);
                         } else if (ev.type === 'success') {
                             if(window.SoundManager) window.SoundManager.playGlass();
                             cell.classList.remove('bg-white'); cell.classList.add(COLOR_MAP[ev.color].code);
-                            cell.style.animation = 'shine-pulse 0.5s forwards'; // Faster
+                            cell.style.animation = 'shine-pulse 0.55s forwards'; 
                         } else if (ev.type === 'flip') {
                             if(window.SoundManager) window.SoundManager.playGlass();
                             COLORS.forEach(c => cell.classList.remove(COLOR_MAP[c].code));
                             cell.classList.add(COLOR_MAP[ev.color].code);
-                            cell.style.animation = 'flip-anim 0.3s forwards'; // Faster
+                            cell.style.animation = 'flip-anim 0.33s forwards'; 
                         }
                     }
                 }, accumulatedDelay);
@@ -1248,7 +1245,7 @@
                     const colors = cellMoves.map(m => m.color);
                     roundEvents.push({ r, c, type: 'conflict', colors: colors });
                     // --- FIX: Faster Turn Resolution Calc ---
-                    totalAnimTime += (colors.length * 500) + 500; // Was 1000s
+                    totalAnimTime += (colors.length * 550) + 550; // Was 500/500
                     board[r][c] = ''; 
                 }
             }
@@ -1265,13 +1262,13 @@
             validMoves.forEach(m => {
                 board[m.r][m.c] = m.color;
                 roundEvents.push({ r: m.r, c: m.c, color: m.color, type: 'success' });
-                totalAnimTime += 600; // Was 1000
+                totalAnimTime += 660; // Was 600
                 if(m.isOverwrite) overwriteConsumers.add(m.id);
                 const flips = applyOthello(board, m.r, m.c, m.color);
                 flips.forEach(f => {
                     board[f.r][f.c] = m.color; 
                     roundEvents.push({ r: f.r, c: f.c, color: m.color, type: 'flip' });
-                    totalAnimTime += 300; // Was 500
+                    totalAnimTime += 330; // Was 300
                 });
             });
             let newScores = {};
