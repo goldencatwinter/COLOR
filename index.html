@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>COLOR - Final Optimized</title>
+    <title>COLOR - Room System</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700;900&display=swap');
@@ -114,37 +114,9 @@
         .cell:hover:not(.occupied-immutable) { filter: brightness(0.9); cursor: pointer; }
         
         @keyframes slideIn { from { opacity: 0; transform: translateX(-10px); } to { opacity: 1; transform: translateX(0); } }
-        .queue-item { animation: slideIn 0.3s ease-out forwards; }
+        .room-item { animation: slideIn 0.3s ease-out forwards; }
 
         .modal-content { animation: popIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
-        
-        /* Custom Checkbox */
-        .friend-checkbox {
-            appearance: none;
-            background-color: #fff;
-            margin: 0;
-            font: inherit;
-            color: currentColor;
-            width: 1.15em;
-            height: 1.15em;
-            border: 2px solid currentColor;
-            display: grid;
-            place-content: center;
-            cursor: pointer;
-        }
-        .friend-checkbox::before {
-            content: "";
-            width: 0.65em;
-            height: 0.65em;
-            transform: scale(0);
-            transition: 120ms transform ease-in-out;
-            box-shadow: inset 1em 1em black;
-            transform-origin: center;
-            clip-path: polygon(14% 44%, 0 65%, 50% 100%, 100% 16%, 80% 0%, 43% 62%);
-        }
-        .friend-checkbox:checked::before {
-            transform: scale(1);
-        }
 
         ::-webkit-scrollbar { width: 4px; }
         ::-webkit-scrollbar-track { background: transparent; }
@@ -179,8 +151,9 @@
             <div class="flex-1 flex items-center justify-center min-h-[400px] mb-8">
                 <div id="game-board" class="relative grid grid-cols-5 gap-px bg-gray-300 p-px w-full max-w-[600px] aspect-square border-2 border-gray-300 shadow-lg">
                     
-                    <div class="col-span-5 flex items-center justify-center h-full text-white text-xl font-bold tracking-widest uppercase bg-waiting-rainbow shadow-inner">
-                        Waiting for match
+                    <div id="waiting-screen" class="col-span-5 flex flex-col items-center justify-center h-full text-white bg-waiting-rainbow shadow-inner p-4 text-center">
+                        <h2 class="text-3xl font-black uppercase tracking-widest mb-2 drop-shadow-md">WAITING FOR PLAYERS</h2>
+                        <p id="room-status-text" class="text-lg font-bold drop-shadow-sm">...</p>
                     </div>
 
                     <div id="message-modal" class="hidden absolute inset-0 z-50 flex items-center justify-center backdrop-blur-[2px] bg-black/30">
@@ -208,37 +181,28 @@
                 </div>
 
                 <div class="flex flex-col gap-3 w-full max-w-md">
-                    <div id="nickname-section" class="w-full">
-                        <input type="text" id="nickname-input" placeholder="ENTER YOUR NAME" maxlength="10" 
+                    <div id="login-section" class="w-full">
+                        <input type="text" id="nickname-input" placeholder="ENTER YOUR NICKNAME" maxlength="10" 
                                class="w-full bg-gray-100 border-2 border-gray-200 p-4 font-bold text-center uppercase tracking-widest focus:outline-none focus:border-black transition-colors mb-3">
-                        <button id="join-queue-btn" disabled
+                        <button id="login-btn" disabled
                                 class="w-full bg-black text-white hover:bg-gray-800 font-bold py-4 text-sm tracking-widest uppercase transition-colors disabled:opacity-30 disabled:cursor-not-allowed">
-                            Find Match
+                            ENTER LOBBY
                         </button>
                     </div>
 
-                    <div id="game-buttons" class="hidden flex flex-col gap-2 w-full">
-                         <button id="start-3p-quick-btn" 
-                            class="hidden w-full bg-gradient-to-r from-red-600 via-yellow-500 to-blue-600 text-white font-black py-4 text-sm tracking-widest uppercase transition-all shadow-lg hover:scale-[1.02]">
-                             Start 3P Quick Match
-                         </button>
-
-                         <button id="start-friends-btn" 
-                            class="hidden w-full bg-black text-white border-2 border-black hover:bg-gray-800 font-bold py-3 text-sm tracking-widest uppercase transition-colors">
-                             Start with Selected (3P)
-                         </button>
-
-                         <div class="flex gap-2">
-                             <button id="start-2p-ai-btn"
-                                     class="hidden flex-1 bg-gray-900 text-yellow-400 border-2 border-gray-900 hover:bg-gray-800 font-bold py-3 text-xs tracking-widest uppercase transition-colors shadow-lg">
-                                 2P + 1 AI
-                             </button>
-                             <button id="force-ai-btn" 
-                                     class="hidden flex-1 bg-white text-black border-2 border-black hover:bg-black hover:text-white font-bold py-3 text-xs tracking-widest uppercase transition-colors">
-                                 Solo AI
-                             </button>
-                         </div>
-                         <p class="text-[10px] text-gray-400 text-center font-bold uppercase mt-2">Select 2 players from queue to start with friends</p>
+                    <div id="lobby-section" class="hidden w-full flex flex-col gap-3">
+                        <input type="text" id="room-title-input" placeholder="ROOM TITLE (e.g. JOIN ME)" maxlength="15" 
+                               class="w-full bg-white border-2 border-gray-300 p-4 font-bold text-center uppercase tracking-widest focus:outline-none focus:border-black transition-colors">
+                        
+                        <button id="create-room-btn" disabled
+                                class="w-full bg-gradient-to-r from-red-500 via-yellow-500 to-blue-500 text-white font-black py-4 text-sm tracking-widest uppercase transition-all shadow-lg hover:scale-[1.02] disabled:opacity-50 disabled:grayscale">
+                            CREATE ROOM
+                        </button>
+                        
+                        <button id="back-to-login-btn" 
+                                class="w-full bg-gray-200 text-gray-600 hover:bg-gray-300 font-bold py-2 text-xs tracking-widest uppercase transition-colors">
+                            BACK
+                        </button>
                     </div>
                 </div>
             </div>
@@ -256,13 +220,13 @@
                 </ul>
             </div>
 
-            <div id="queue-section" class="flex-1 min-h-[200px] flex flex-col">
+            <div id="room-list-section" class="flex-1 min-h-[200px] flex flex-col hidden">
                 <div class="flex justify-between items-center mb-4 border-b border-gray-200 pb-2">
-                    <p class="text-[10px] font-bold text-gray-400 uppercase tracking-widest">QUEUE</p>
-                    <span id="queue-count" class="text-xs font-bold bg-black text-white px-2 py-0.5">0</span>
+                    <p class="text-[10px] font-bold text-gray-400 uppercase tracking-widest">OPEN ROOMS</p>
+                    <span id="room-count" class="text-xs font-bold bg-black text-white px-2 py-0.5">0</span>
                 </div>
-                <div id="queue-list" class="flex-1 overflow-y-auto space-y-2 pr-2">
-                    <p class="text-gray-300 text-xs text-center py-8 uppercase tracking-widest">No players waiting</p>
+                <div id="room-list" class="flex-1 overflow-y-auto space-y-2 pr-2">
+                    <p class="text-gray-300 text-xs text-center py-8 uppercase tracking-widest">No rooms created</p>
                 </div>
             </div>
         </div>
@@ -273,7 +237,7 @@
         import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
         import { 
             getFirestore, doc, setDoc, updateDoc, deleteDoc, onSnapshot, collection, 
-            query, where, getDocs, runTransaction, serverTimestamp, orderBy, limit 
+            query, where, getDocs, runTransaction, serverTimestamp, orderBy, limit, addDoc 
         } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
         // --- Sound Manager ---
@@ -287,17 +251,17 @@
                 
                 document.addEventListener('visibilitychange', async () => {
                     if (document.visibilityState === 'hidden') {
-                        if (queueDocId && !gameId) {
-                            console.log("Background detected: Leaving queue.");
-                            await leaveQueue(); 
-                            resetLocalStateAndUI(); 
+                        if (currentRoomId && !gameId) {
+                            console.log("Background detected: Leaving room.");
+                            await leaveCurrentRoom(); 
+                            resetToLobby(); 
                         }
                     }
                 });
 
                 window.addEventListener('beforeunload', () => {
-                    if (queueDocId && !gameId) {
-                        leaveQueue(); 
+                    if (currentRoomId && !gameId) {
+                        leaveCurrentRoom(); 
                     }
                 });
             },
@@ -434,37 +398,36 @@
 
         let app, db, auth, userId;
         let myNickname = "";
-        let queueDocId = null;
+        let currentRoomId = null;
         let gameId = null;
         let myColor = null;
         let myOverwritesLeft = MAX_OVERWRITES;
-        let currentQueueDocs = []; 
         let lastProcessedTurn = 0; 
         let isAnimating = false; 
         let pendingBoardState = null; 
         let pendingGameEndData = null; 
-        let selectedFriendIds = new Set(); 
         
-        let unsubscribeQueue = null;
+        let unsubscribeRooms = null;
+        let unsubscribeCurrentRoom = null;
         let unsubscribeGame = null;
-        let unsubscribeMyTicket = null;
 
+        // UI Elements
         const nicknameInput = document.getElementById('nickname-input');
-        const nicknameSection = document.getElementById('nickname-section');
-        const joinBtn = document.getElementById('join-queue-btn');
-        const gameButtonsDiv = document.getElementById('game-buttons');
-        const aiBtn = document.getElementById('force-ai-btn');
-        const start2pBtn = document.getElementById('start-2p-ai-btn');
-        const start3pBtn = document.getElementById('start-3p-quick-btn');
-        const startFriendsBtn = document.getElementById('start-friends-btn');
+        const loginBtn = document.getElementById('login-btn');
+        const loginSection = document.getElementById('login-section');
         
-        const queueListEl = document.getElementById('queue-list');
-        const queueCountEl = document.getElementById('queue-count');
+        const lobbySection = document.getElementById('lobby-section');
+        const roomTitleInput = document.getElementById('room-title-input');
+        const createRoomBtn = document.getElementById('create-room-btn');
+        const backToLoginBtn = document.getElementById('back-to-login-btn');
+
+        const roomListSection = document.getElementById('room-list-section');
+        const roomListEl = document.getElementById('room-list');
+        const roomCountEl = document.getElementById('room-count');
+        
         const boardElement = document.getElementById('game-board');
         const timerDisplay = document.getElementById('timer-display');
-        const timerDisplayMobile = document.getElementById('timer-display-mobile');
         const scoresSection = document.getElementById('scores-section');
-        const queueSection = document.getElementById('queue-section');
         const scoreList = document.getElementById('score-list');
         
         const desktopTimerContainer = document.getElementById('desktop-timer-container');
@@ -476,44 +439,44 @@
 
         const overwriteUIDisplay = document.getElementById('overwrite-ui-display');
         const overwriteUIContainer = document.getElementById('overwrite-ui-container');
+        const waitingScreen = document.getElementById('waiting-screen');
+        const roomStatusText = document.getElementById('room-status-text');
 
         let currentBoardState = [];
         let selectedCell = null; 
         let isResolving = false;
         let localTimerInterval = null;
         let lastTimerValue = ""; 
-
-        let lastGameMode = null; 
         let isMoveCommitted = false; 
 
-        // --- Strict Queue Watchdog ---
-        let queueKickTimer = null;
-        // CHANGED: Timeout increased to 30 seconds
+        // --- Strict Watchdog (Timeout) ---
+        let lobbyKickTimer = null;
         const STRICT_QUEUE_TIMEOUT = 30000; 
 
-        function startQueueWatchdog() {
-            resetQueueWatchdog();
+        function startLobbyWatchdog() {
+            resetLobbyWatchdog();
             ['mousemove', 'keydown', 'click', 'touchstart'].forEach(evt => {
-                document.addEventListener(evt, resetQueueWatchdog);
+                document.addEventListener(evt, resetLobbyWatchdog);
             });
         }
 
-        function stopQueueWatchdog() {
-            if (queueKickTimer) clearTimeout(queueKickTimer);
+        function stopLobbyWatchdog() {
+            if (lobbyKickTimer) clearTimeout(lobbyKickTimer);
             ['mousemove', 'keydown', 'click', 'touchstart'].forEach(evt => {
-                document.removeEventListener(evt, resetQueueWatchdog);
+                document.removeEventListener(evt, resetLobbyWatchdog);
             });
         }
 
-        function resetQueueWatchdog() {
-            if (queueKickTimer) clearTimeout(queueKickTimer);
+        function resetLobbyWatchdog() {
+            if (lobbyKickTimer) clearTimeout(lobbyKickTimer);
             
-            if (queueDocId && !gameId) {
-                queueKickTimer = setTimeout(async () => {
-                    console.log("Strict 30s Inactivity in Queue: Kicking user.");
-                    await leaveQueue();
-                    resetLocalStateAndUI();
-                    alert("30초 동안 활동이 없어 대기열에서 제외되었습니다.");
+            // If in a room but game hasn't started
+            if (currentRoomId && !gameId) {
+                lobbyKickTimer = setTimeout(async () => {
+                    console.log("30s Inactivity in Lobby: Kicking user.");
+                    await leaveCurrentRoom();
+                    resetToLobby();
+                    alert("30초 동안 활동이 없어 대기실에서 나갔습니다.");
                 }, STRICT_QUEUE_TIMEOUT);
             }
         }
@@ -537,373 +500,324 @@
 
             mobileTimerContainer.classList.add('hidden');
             overwriteUIContainer.classList.add('hidden');
-            
-            watchQueueList(); 
         }
         window.onload = init;
 
+        // --- 1. Login Logic ---
         nicknameInput.addEventListener('input', (e) => {
-            joinBtn.disabled = e.target.value.trim().length === 0;
+            loginBtn.disabled = e.target.value.trim().length === 0;
         });
 
-        async function performJoinQueue() {
-            if (!userId) {
-                if (auth.currentUser) {
-                    userId = auth.currentUser.uid;
-                } else {
-                    alert("Network initializing... Please try again in a moment.");
-                    return;
-                }
-            }
-            
-            if(window.SoundManager) {
-                window.SoundManager.init();
-            }
-
-            nicknameSection.classList.add('hidden'); 
-            gameButtonsDiv.classList.remove('hidden'); 
-            
-            myNicknameDisplay.textContent = myNickname;
-            myNicknameMobile.textContent = myNickname; 
-
-            joinBtn.textContent = "SEARCHING...";
-            joinBtn.disabled = true;
-            nicknameInput.disabled = true;
-
-            selectedFriendIds.clear(); // Reset selections on join
-
-            try {
-                const queueRef = collection(db, 'artifacts', appId, 'public', 'data', 'queue');
-                const ticketRef = doc(queueRef, userId);
-                await setDoc(ticketRef, { 
-                    userId: userId, 
-                    nickname: myNickname,
-                    joinedAt: serverTimestamp(), 
-                    matchId: null 
-                });
-                queueDocId = userId;
-                
-                startQueueWatchdog();
-                watchMyTicket(ticketRef);
-            } catch (e) {
-                console.error(e);
-                alert("Connection Error. Please refresh.");
-                resetUI();
-            }
-        }
-
-        joinBtn.addEventListener('click', async () => {
+        loginBtn.addEventListener('click', () => {
             const val = nicknameInput.value.trim();
             if(!val) return;
             myNickname = val.toUpperCase().slice(0, 10);
-            await performJoinQueue();
+            if(window.SoundManager) window.SoundManager.init();
+            
+            enterLobbyMode();
         });
 
-        function watchMyTicket(docRef) {
-            unsubscribeMyTicket = onSnapshot(docRef, (docSnap) => {
+        function enterLobbyMode() {
+            loginSection.classList.add('hidden');
+            lobbySection.classList.remove('hidden');
+            roomListSection.classList.remove('hidden');
+            
+            myNicknameDisplay.textContent = myNickname;
+            myNicknameMobile.textContent = myNickname; 
+            
+            roomTitleInput.disabled = false;
+            createRoomBtn.disabled = true;
+            
+            watchRooms();
+        }
+        
+        backToLoginBtn.addEventListener('click', () => {
+            if (unsubscribeRooms) unsubscribeRooms();
+            loginSection.classList.remove('hidden');
+            lobbySection.classList.add('hidden');
+            roomListSection.classList.add('hidden');
+        });
+
+        // --- 2. Room Creation Logic ---
+        roomTitleInput.addEventListener('input', (e) => {
+            createRoomBtn.disabled = e.target.value.trim().length === 0;
+        });
+
+        createRoomBtn.addEventListener('click', async () => {
+            const title = roomTitleInput.value.trim().toUpperCase().slice(0, 15);
+            if (!title) return;
+            
+            createRoomBtn.textContent = "CREATING...";
+            createRoomBtn.disabled = true;
+            roomTitleInput.disabled = true;
+
+            try {
+                // Create Room Document
+                const roomDoc = await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'rooms'), {
+                    title: title,
+                    hostId: userId,
+                    players: [{ userId: userId, nickname: myNickname }],
+                    status: 'waiting',
+                    createdAt: serverTimestamp(),
+                    matchId: null
+                });
+                
+                currentRoomId = roomDoc.id;
+                enterWaitingRoom(title);
+
+            } catch(e) {
+                console.error(e);
+                alert("Failed to create room.");
+                resetToLobby();
+            }
+        });
+
+        // --- 3. Room List & Join Logic ---
+        function watchRooms() {
+            if (unsubscribeRooms) unsubscribeRooms();
+
+            const roomsRef = collection(db, 'artifacts', appId, 'public', 'data', 'rooms');
+            const q = query(roomsRef, where('status', '==', 'waiting'), orderBy('createdAt', 'desc'), limit(10));
+            
+            unsubscribeRooms = onSnapshot(q, (snapshot) => {
+                const docs = snapshot.docs;
+                renderRoomList(docs);
+            });
+        }
+
+        function renderRoomList(docs) {
+            roomCountEl.textContent = docs.length;
+            roomListEl.innerHTML = '';
+
+            if (docs.length === 0) {
+                roomListEl.innerHTML = '<p class="text-gray-300 text-xs text-center py-8 uppercase tracking-widest">No open rooms</p>';
+                return;
+            }
+
+            docs.forEach(d => {
+                const data = d.data();
+                const playerCount = data.players ? data.players.length : 0;
+                const isFull = playerCount >= 3;
+                
+                const el = document.createElement('div');
+                el.className = "room-item p-3 border border-gray-200 bg-white flex justify-between items-center mb-2 shadow-sm transition hover:shadow-md";
+                
+                el.innerHTML = `
+                    <div class="flex flex-col">
+                        <span class="font-bold uppercase text-sm">${data.title}</span>
+                        <span class="text-[10px] text-gray-500 tracking-widest">HOST: ${data.players[0]?.nickname || 'Unknown'}</span>
+                    </div>
+                    <div class="flex items-center gap-3">
+                        <span class="font-mono font-bold text-xs ${isFull ? 'text-red-500' : 'text-green-600'}">${playerCount}/3</span>
+                        <button class="bg-black text-white px-4 py-2 text-xs font-bold uppercase tracking-widest hover:bg-gray-800 disabled:opacity-50"
+                                onclick="window.joinRoom('${d.id}')" ${isFull ? 'disabled' : ''}>
+                            JOIN
+                        </button>
+                    </div>
+                `;
+                roomListEl.appendChild(el);
+            });
+        }
+
+        window.joinRoom = async (roomId) => {
+            if (!userId) return;
+            
+            try {
+                const roomRef = doc(db, 'artifacts', appId, 'public', 'data', 'rooms', roomId);
+                
+                await runTransaction(db, async (transaction) => {
+                    const roomDoc = await transaction.get(roomRef);
+                    if (!roomDoc.exists()) throw "Room does not exist!";
+                    
+                    const data = roomDoc.data();
+                    if (data.players.length >= 3) throw "Room is full!";
+                    
+                    const newPlayers = [...data.players, { userId: userId, nickname: myNickname }];
+                    transaction.update(roomRef, { players: newPlayers });
+                });
+
+                currentRoomId = roomId;
+                const roomTitle = (await getDocs(query(collection(db, 'artifacts', appId, 'public', 'data', 'rooms'), where('__name__', '==', roomId)))).docs[0]?.data().title || "ROOM";
+                enterWaitingRoom(roomTitle);
+
+            } catch (e) {
+                alert(e);
+            }
+        };
+
+        function enterWaitingRoom(title) {
+            // UI Switch
+            lobbySection.classList.add('hidden');
+            roomListSection.classList.add('hidden');
+            
+            waitingScreen.classList.remove('hidden');
+            waitingScreen.querySelector('h2').textContent = title;
+            roomStatusText.textContent = "Waiting for players... (1/3)";
+            
+            startLobbyWatchdog();
+            watchCurrentRoom();
+        }
+
+        function watchCurrentRoom() {
+            if (!currentRoomId) return;
+            
+            const roomRef = doc(db, 'artifacts', appId, 'public', 'data', 'rooms', currentRoomId);
+            unsubscribeCurrentRoom = onSnapshot(roomRef, async (docSnap) => {
                 if (!docSnap.exists()) {
-                    if (queueDocId) {
-                        alert("You have been kicked from the queue.");
-                        resetLocalStateAndUI();
-                    }
+                    // Room deleted or something
+                    resetToLobby();
                     return;
                 }
-                const data = docSnap.data();
-                if (data.matchId) {
-                    lastGameMode = 'PVP'; 
-                    enterGame(data.matchId);
-                }
-            });
-        }
-
-        function watchQueueList() {
-            if (unsubscribeQueue) return; 
-
-            const queueRef = collection(db, 'artifacts', appId, 'public', 'data', 'queue');
-            const q = query(queueRef, orderBy('joinedAt', 'asc'), limit(12));
-            unsubscribeQueue = onSnapshot(q, (snapshot) => {
-                const docs = snapshot.docs;
-                currentQueueDocs = docs;
-                renderQueueList(docs);
                 
-                // --- Logic Update: Manual Start Only ---
-                if (queueDocId) {
-                    // Update Button Visibility based on counts
-                    
-                    // 1. Quick Start (3 Players)
-                    if (docs.length >= 3) {
-                        start3pBtn.classList.remove('hidden');
-                        start3pBtn.textContent = `START 3P GAME (${docs.length} WAITING)`;
-                    } else {
-                        start3pBtn.classList.add('hidden');
-                    }
+                const data = docSnap.data();
+                const players = data.players || [];
+                
+                // Update Waiting Text
+                roomStatusText.innerHTML = `
+                    PLAYERS (${players.length}/3)<br>
+                    <span class="text-sm font-normal opacity-80 mt-2 block">
+                        ${players.map(p => p.nickname).join(', ')}
+                    </span>
+                `;
 
-                    // 2. Friends Start
-                    if (selectedFriendIds.size === 2) {
-                        startFriendsBtn.classList.remove('hidden');
-                    } else {
-                        startFriendsBtn.classList.add('hidden');
-                    }
-
-                    // 3. AI Buttons
-                    if (docs.length >= 1) { 
-                        aiBtn.classList.remove('hidden');
-                        aiBtn.classList.remove('flex-1'); // Reset flex
-                        aiBtn.classList.add('flex-1');
-                    } else {
-                        aiBtn.classList.add('hidden');
-                    }
-
-                    if (docs.length >= 2) {
-                        start2pBtn.classList.remove('hidden');
-                    } else {
-                        start2pBtn.classList.add('hidden');
-                    }
+                // Check Game Start
+                if (data.matchId) {
+                    // Game created!
+                    enterGame(data.matchId);
+                } else if (players.length === 3 && players[0].userId === userId) {
+                    // I am Host, and room is full -> Create Game
+                    await startGameAsHost(players);
                 }
             });
         }
 
-        async function createMatchedGame(usersDocs) { await initGameWithPlayers(usersDocs); }
+        async function startGameAsHost(players) {
+            // Prevent multiple triggers
+            if (gameId) return; 
 
-        start3pBtn.addEventListener('click', async () => {
-             if(window.SoundManager) window.SoundManager.init();
-             if (!queueDocId || currentQueueDocs.length < 3) return;
-             // Pick top 3 players
-             const top3 = currentQueueDocs.slice(0, 3);
-             await initGameWithPlayers(top3);
-        });
-
-        startFriendsBtn.addEventListener('click', async () => {
-             if(window.SoundManager) window.SoundManager.init();
-             if (!queueDocId || selectedFriendIds.size !== 2) return;
-             
-             // Filter docs to match selected IDs + Self
-             const selectedDocs = currentQueueDocs.filter(d => 
-                 d.id === userId || selectedFriendIds.has(d.id)
-             );
-
-             if (selectedDocs.length !== 3) {
-                 alert("Selected players might have left the queue.");
-                 return;
-             }
-             
-             await initGameWithPlayers(selectedDocs);
-        });
-
-        start2pBtn.addEventListener('click', async () => {
-            if(window.SoundManager) window.SoundManager.init();
-            if (!queueDocId || currentQueueDocs.length < 2) return;
-            // Prefer selected friend if only 1 selected, otherwise top 2
-            let targets = [];
-            if (selectedFriendIds.size === 1) {
-                targets = currentQueueDocs.filter(d => d.id === userId || selectedFriendIds.has(d.id));
-            } 
-            
-            if (targets.length !== 2) {
-                 targets = currentQueueDocs.slice(0, 2);
-            }
-            
-            await initGameWithPlayers(targets, true); 
-        });
-
-        aiBtn.addEventListener('click', async () => {
-            await startSoloAiGame();
-        });
-
-        async function initGameWithPlayers(usersDocs, fillAI = false) {
             const gamesRef = collection(db, 'artifacts', appId, 'public', 'data', 'games');
             const newGameRef = doc(gamesRef);
             const newGameId = newGameRef.id;
+            
             const playersData = {};
             const playerOrder = [];
             
-            usersDocs.forEach((d, idx) => {
-                const uid = d.data().userId;
-                const nick = d.data().nickname || "Unknown";
-                playersData[uid] = { 
-                    nickname: nick, 
+            players.forEach((p, idx) => {
+                playersData[p.userId] = { 
+                    nickname: p.nickname, 
                     color: COLORS[idx], 
                     isAI: false, 
                     score: 0, 
                     overwrites: MAX_OVERWRITES, 
                     lastMove: null
                 };
-                playerOrder.push(uid);
+                playerOrder.push(p.userId);
             });
-
-            if (fillAI && usersDocs.length < 3) {
-                const aiCount = 3 - usersDocs.length;
-                for(let i=0; i<aiCount; i++) {
-                    const colorIndex = usersDocs.length + i;
-                    const aiId = `AI_CPU_${i+1}`;
-                    playersData[aiId] = { 
-                        nickname: "AI BOT", 
-                        color: COLORS[colorIndex], 
-                        isAI: true, 
-                        score: 0, 
-                        overwrites: MAX_OVERWRITES, 
-                        lastMove: null
-                    };
-                    playerOrder.push(aiId);
-                }
-                lastGameMode = 'PVP_AI'; 
-            } else {
-                lastGameMode = 'PVP';
-            }
 
             const initialBoard = Array(BOARD_SIZE).fill(0).map(() => Array(BOARD_SIZE).fill(''));
             const deadLine = Date.now() + FIRST_TURN_DURATION_MS + NETWORK_BUFFER_MS;
 
-            await runTransaction(db, async (transaction) => {
-                transaction.set(newGameRef, {
-                    status: 'playing', turn: 1, turnDeadline: deadLine,
-                    board: JSON.stringify(initialBoard), players: playersData,
-                    playerOrder: playerOrder, hostId: userId, createdAt: serverTimestamp(),
-                    lastRoundEvents: "[]"
+            try {
+                await runTransaction(db, async (transaction) => {
+                    // Create Game
+                    transaction.set(newGameRef, {
+                        status: 'playing', turn: 1, turnDeadline: deadLine,
+                        board: JSON.stringify(initialBoard), players: playersData,
+                        playerOrder: playerOrder, hostId: userId, createdAt: serverTimestamp(),
+                        lastRoundEvents: "[]"
+                    });
+                    
+                    // Update Room with matchId -> Triggers everyone to join
+                    const roomRef = doc(db, 'artifacts', appId, 'public', 'data', 'rooms', currentRoomId);
+                    transaction.update(roomRef, { matchId: newGameId, status: 'full' });
                 });
-                for (const d of usersDocs) {
-                    const qRef = doc(db, 'artifacts', appId, 'public', 'data', 'queue', d.id);
-                    transaction.update(qRef, { matchId: newGameId });
-                }
-            });
-        }
-
-        async function startSoloAiGame() {
-            if(window.SoundManager) window.SoundManager.init();
-            
-            if (queueDocId) await leaveQueue();
-
-            lastGameMode = 'AI';
-            
-            const newGameRef = doc(collection(db, 'artifacts', appId, 'public', 'data', 'games'));
-            const initialBoard = Array(BOARD_SIZE).fill(0).map(() => Array(BOARD_SIZE).fill(''));
-            const playersData = {
-                [userId]: { nickname: myNickname, color: 'R', isAI: false, score: 0, overwrites: MAX_OVERWRITES, lastMove: null },
-                'AI_Y': { nickname: "AI YELLOW", color: 'Y', isAI: true, score: 0, overwrites: MAX_OVERWRITES, lastMove: null }, 
-                'AI_B': { nickname: "AI BLUE", color: 'B', isAI: true, score: 0, overwrites: MAX_OVERWRITES, lastMove: null } 
-            };
-            const deadLine = Date.now() + FIRST_TURN_DURATION_MS + NETWORK_BUFFER_MS;
-            await setDoc(newGameRef, {
-                status: 'playing', turn: 1, turnDeadline: deadLine,
-                board: JSON.stringify(initialBoard), players: playersData,
-                playerOrder: [userId, 'AI_Y', 'AI_B'], hostId: userId, createdAt: serverTimestamp(),
-                lastRoundEvents: "[]"
-            });
-            enterGame(newGameRef.id);
-        }
-
-        async function leaveQueue() {
-            stopQueueWatchdog();
-
-            if (unsubscribeMyTicket) { unsubscribeMyTicket(); unsubscribeMyTicket = null; }
-            if (queueDocId) {
-                await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'queue', queueDocId));
-                queueDocId = null;
+            } catch (e) {
+                console.error("Error starting game:", e);
             }
         }
 
-        function resetLocalStateAndUI() {
-            stopQueueWatchdog();
-            
+        async function leaveCurrentRoom() {
+            stopLobbyWatchdog();
+            if (unsubscribeCurrentRoom) unsubscribeCurrentRoom();
+
+            if (currentRoomId) {
+                const roomRef = doc(db, 'artifacts', appId, 'public', 'data', 'rooms', currentRoomId);
+                try {
+                    await runTransaction(db, async (transaction) => {
+                        const snap = await transaction.get(roomRef);
+                        if (!snap.exists()) return;
+                        const data = snap.data();
+                        
+                        // Filter me out
+                        const newPlayers = data.players.filter(p => p.userId !== userId);
+                        
+                        if (newPlayers.length === 0) {
+                            transaction.delete(roomRef); // Delete if empty
+                        } else {
+                            transaction.update(roomRef, { players: newPlayers });
+                        }
+                    });
+                } catch (e) { console.error(e); }
+                currentRoomId = null;
+            }
+        }
+
+        function resetToLobby() {
+            stopLobbyWatchdog();
             if (localTimerInterval) clearInterval(localTimerInterval);
             
-            watchQueueList(); 
-
             if (unsubscribeGame) { unsubscribeGame(); unsubscribeGame = null; }
-            if (unsubscribeMyTicket) { unsubscribeMyTicket(); unsubscribeMyTicket = null; }
+            if (unsubscribeCurrentRoom) { unsubscribeCurrentRoom(); unsubscribeCurrentRoom = null; }
 
-            queueDocId = null;
+            currentRoomId = null;
             gameId = null;
             myColor = null;
-            myOverwritesLeft = MAX_OVERWRITES;
-            lastProcessedTurn = 0;
-            isAnimating = false;
-            pendingBoardState = null;
-            pendingGameEndData = null;
-            selectedCell = null;
-            isResolving = false;
-            lastTimerValue = "";
-            isMoveCommitted = false; 
             
-            selectedFriendIds.clear(); // Clear selections
-
-            nicknameSection.classList.remove('hidden');
-            joinBtn.textContent = "Find Match";
-            joinBtn.disabled = true;
-            nicknameInput.disabled = false;
-            nicknameInput.value = "";
-            gameButtonsDiv.classList.add('hidden');
+            // UI Reset
+            lobbySection.classList.remove('hidden');
+            roomListSection.classList.remove('hidden');
             
-            // Hide new buttons
-            start3pBtn.classList.add('hidden');
-            startFriendsBtn.classList.add('hidden');
-            start2pBtn.classList.add('hidden');
-            aiBtn.classList.add('hidden');
-
-            myNicknameDisplay.textContent = ''; 
-            myNicknameMobile.textContent = '-';
-            myNicknameMobile.style.color = '#1a1a1a';
+            createRoomBtn.textContent = "CREATE ROOM";
+            createRoomBtn.disabled = false;
+            roomTitleInput.disabled = false;
+            roomTitleInput.value = "";
             
-            myColorDisplay.textContent = 'SPECTATOR';
+            waitingScreen.classList.remove('hidden'); // Shows waiting board instead of game
+            waitingScreen.querySelector('h2').textContent = "LOBBY";
+            roomStatusText.textContent = "";
 
-            overwriteUIDisplay.innerHTML = '';
+            scoresSection.classList.add('hidden');
+            mobileTimerContainer.classList.add('hidden');
             overwriteUIContainer.classList.add('hidden');
             
-            scoresSection.classList.add('hidden');
-            queueSection.classList.remove('hidden');
+            // Clear board
+            const cells = boardElement.querySelectorAll('.cell');
+            cells.forEach(el => el.remove());
             
-            mobileTimerContainer.classList.add('hidden');
-
-            updateTimerDisplay("--");
-
-            scoreList.innerHTML = '<li class="text-gray-300 text-xs uppercase tracking-widest py-2">Game not started</li>';
+            document.getElementById('message-modal').classList.add('hidden');
             
-            boardElement.innerHTML = `<div class="col-span-5 flex items-center justify-center h-full text-white text-xl font-bold tracking-widest uppercase bg-waiting-rainbow shadow-inner">
-                        Waiting for match
-                    </div>
-                    <div id="message-modal" class="hidden absolute inset-0 z-50 flex items-center justify-center backdrop-blur-[2px] bg-black/30">
-                        <div class="modal-content bg-white/20 border border-white/40 p-6 w-[80%] max-w-sm text-center backdrop-blur-md shadow-[0_8px_32px_0_rgba(31,38,135,0.37)] rounded-xl relative">
-                            <button onclick="window.triggerRematch()" class="absolute top-2 right-3 text-white text-2xl font-bold p-1 leading-none hover:text-gray-300">&times;</button>
-                            <h3 id="modal-title" class="text-2xl font-black uppercase mb-3 tracking-tighter text-white drop-shadow-md">TITLE</h3>
-                            <p id="modal-content" class="text-white mb-6 font-bold whitespace-pre-line leading-relaxed text-sm drop-shadow-sm">Content</p>
-                            
-                            <button id="modal-play-again" class="w-full bg-black hover:bg-gray-800 text-white border border-white/20 font-black py-4 text-sm tracking-[0.2em] uppercase transition-all hover:scale-105 rounded-lg shadow-xl mb-3">
-                                PLAY AGAIN (SAME MEMBERS)
-                            </button>
-                        </div>
-                    </div>`;
-             
-             setupPlayAgainListener();
+            watchRooms();
         }
 
+        // --- 4. Game Logic (Adapted) ---
+
         async function enterGame(id) {
-            stopQueueWatchdog();
+            stopLobbyWatchdog();
+            if (unsubscribeCurrentRoom) unsubscribeCurrentRoom(); // Stop listening to room
             
             gameId = id;
-            await leaveQueue();
-
-            if (unsubscribeQueue) { unsubscribeQueue(); unsubscribeQueue = null; }
-            
-            nicknameSection.classList.add('hidden');
-            gameButtonsDiv.classList.remove('hidden');
-            // Hide matchmaking buttons during game
-            start3pBtn.classList.add('hidden');
-            startFriendsBtn.classList.add('hidden');
-            start2pBtn.classList.add('hidden');
-            aiBtn.classList.add('hidden');
             
             unsubscribeGame = onSnapshot(doc(db, 'artifacts', appId, 'public', 'data', 'games', gameId), (docSnap) => {
                 if(!docSnap.exists()) {
                     if(localTimerInterval) clearInterval(localTimerInterval);
-                    resetLocalStateAndUI();
+                    resetToLobby();
                     return;
                 }
                 handleGameUpdate(docSnap.data());
             });
             
-            queueSection.classList.add('hidden');
+            waitingScreen.classList.add('hidden'); // Hide waiting screen
             scoresSection.classList.remove('hidden');
-            
             mobileTimerContainer.classList.remove('hidden'); 
         }
 
@@ -923,26 +837,14 @@
         }
 
         function handleGameUpdate(gameData) {
+            // ... (Same logic as before) ...
             const myPlayerData = gameData.players[userId];
             if (myPlayerData && myPlayerData.isAI) {
                 alert("You have been removed for missing the first turn.");
                 if(localTimerInterval) clearInterval(localTimerInterval);
                 if(unsubscribeGame) { unsubscribeGame(); unsubscribeGame = null; }
-                resetLocalStateAndUI();
+                resetToLobby();
                 return; 
-            }
-
-            queueSection.classList.add('hidden');
-            scoresSection.classList.remove('hidden');
-            mobileTimerContainer.classList.remove('hidden');
-
-            // --- DETECT RESET (REMATCH) ---
-            if (gameData.turn < lastProcessedTurn) {
-                // Game was reset! Clear local state logic
-                lastProcessedTurn = 0;
-                isAnimating = false;
-                pendingGameEndData = null;
-                document.getElementById('message-modal').classList.add('hidden');
             }
 
             const myData = gameData.players[userId];
@@ -962,8 +864,14 @@
                  myColorDisplay.textContent = 'SPECTATOR';
                  overwriteUIContainer.classList.add('hidden');
             }
-            
-            // Buttons already hidden in enterGame, but double check
+
+            // DETECT REMATCH (RESET)
+            if (gameData.turn < lastProcessedTurn) {
+                lastProcessedTurn = 0;
+                isAnimating = false;
+                pendingGameEndData = null;
+                document.getElementById('message-modal').classList.add('hidden');
+            }
             
             if (gameData.status === 'finished') {
                 if (localTimerInterval) clearInterval(localTimerInterval);
@@ -976,12 +884,11 @@
                 }
             }
 
-            // --- Detect New Turn ---
             if (gameData.turn > lastProcessedTurn) {
                 isMoveCommitted = false;
                 selectedCell = null;
 
-                if (gameData.lastRoundEvents && gameData.turn > 1) { // Only animate if not turn 1 (reset)
+                if (gameData.lastRoundEvents && gameData.turn > 1) { 
                     const events = JSON.parse(gameData.lastRoundEvents);
                     pendingBoardState = JSON.parse(gameData.board);
                     isAnimating = true;
@@ -1002,6 +909,8 @@
                 runClientTimer(gameData.turnDeadline, gameData);
             }
         }
+
+        // ... (Animations, Timer, Move Logic remain identical) ...
 
         function triggerSequentialAnimations(events, gameData) {
             if (!events || events.length === 0) {
@@ -1150,77 +1059,14 @@
 
         async function commitCurrentMove() {
             if (!gameId || !userId || !selectedCell || isMoveCommitted) return;
-
             isMoveCommitted = true; 
-            
             try {
                 await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'games', gameId), {
                     [`players.${userId}.lastMove`]: selectedCell
                 });
-                console.log("Move committed to DB:", selectedCell);
             } catch (e) {
                 console.error("Failed to commit move:", e);
             }
-        }
-
-        function getStrategicAIMove(board, playerObj, color) {
-            let possibleMoves = [];
-            const emptyCells = [];
-            const enemyCells = [];
-            
-            for(let r=0; r<BOARD_SIZE; r++) {
-                for(let c=0; c<BOARD_SIZE; c++) {
-                    if (board[r][c] === '') emptyCells.push({r, c});
-                    else if (board[r][c] !== color) enemyCells.push({r, c});
-                }
-            }
-
-            emptyCells.forEach(cell => {
-                const flips = applyOthello(board, cell.r, cell.c, color);
-                possibleMoves.push({
-                    r: cell.r, c: cell.c, isOverwrite: false,
-                    flips: flips.length,
-                    score: (flips.length * 10) + 20 
-                });
-            });
-
-            if (playerObj.overwrites > 0) {
-                enemyCells.forEach(cell => {
-                    const flips = applyOthello(board, cell.r, cell.c, color);
-                    let allowed = false;
-                    
-                    if (emptyCells.length <= 8) {
-                        allowed = true;
-                    } 
-                    else if (emptyCells.length <= 16) {
-                        if (flips.length >= 2) allowed = true;
-                    }
-                    else {
-                        if (flips.length >= 3) allowed = true;
-                    }
-
-                    if (allowed) {
-                        const urgencyBonus = (25 - emptyCells.length) * 1.5; 
-                        let score = (flips.length * 12) + urgencyBonus; 
-                        
-                        possibleMoves.push({
-                            r: cell.r, c: cell.c, isOverwrite: true,
-                            flips: flips.length,
-                            score: score
-                        });
-                    }
-                });
-            }
-
-            possibleMoves.sort((a, b) => b.score - a.score);
-            
-            if (possibleMoves.length > 0) {
-                 const bestScore = possibleMoves[0].score;
-                 const topMoves = possibleMoves.filter(m => m.score >= bestScore - 5);
-                 return topMoves[Math.floor(Math.random() * topMoves.length)];
-            }
-            
-            return null;
         }
 
         async function resolveTurn(gameData) {
@@ -1232,25 +1078,8 @@
             
             for (const pid in players) {
                 const p = players[pid]; 
-
-                if (p.isAI) {
-                    const aiMove = getStrategicAIMove(board, p, p.color);
-                    if (aiMove) {
-                         moves.push({ id: pid, color: p.color, r: aiMove.r, c: aiMove.c, isOverwrite: aiMove.isOverwrite });
-                    } else {
-                        const rand = getRandomMove(board);
-                        if(rand) moves.push({ id: pid, color: p.color, r: rand.r, c: rand.c, isOverwrite: false });
-                    }
-                } else {
-                    if (p.lastMove) {
-                        moves.push({ id: pid, color: p.color, r: p.lastMove.r, c: p.lastMove.c, isOverwrite: p.lastMove.isOverwrite });
-                    } else {
-                        if (gameData.turn === 1) {
-                            console.log(`Player ${pid} missed FIRST turn. Kicking...`);
-                        } else {
-                            console.log(`Player ${pid} missed turn ${gameData.turn}. Skipping turn.`);
-                        }
-                    }
+                if (p.lastMove) {
+                    moves.push({ id: pid, color: p.color, r: p.lastMove.r, c: p.lastMove.c, isOverwrite: p.lastMove.isOverwrite });
                 }
             }
 
@@ -1267,7 +1096,6 @@
             for (const key in movesAtPos) {
                 const cellMoves = movesAtPos[key];
                 const [r, c] = key.split(',').map(Number);
-
                 if (cellMoves.length > 1) {
                     const colors = cellMoves.map(m => m.color);
                     roundEvents.push({ r, c, type: 'conflict', colors: colors });
@@ -1277,7 +1105,6 @@
             }
 
             const overwriteConsumers = new Set();
-            
             const validMoves = moves.filter(m => {
                 if (movesAtPos[`${m.r},${m.c}`].length > 1) return false; 
                 const currentOwner = board[m.r][m.c];
@@ -1323,6 +1150,7 @@
                 let isNowAI = p.isAI;
                 let newNickname = p.nickname;
                 
+                // Convert to AI if missed (Turn 1 only logic kept simplistic)
                 if (gameData.turn === 1 && !p.isAI && !p.lastMove) {
                     isNowAI = true; 
                     newNickname = `AI (AUTO)`; 
@@ -1340,7 +1168,6 @@
 
             const totalCells = BOARD_SIZE * BOARD_SIZE;
             const isEnd = finalFilled >= (totalCells - 1); 
-            
             const nextDeadline = Date.now() + TURN_DURATION_MS + NETWORK_BUFFER_MS + totalAnimTime + 500;
 
             const gameRef = doc(db, 'artifacts', appId, 'public', 'data', 'games', gameId);
@@ -1384,11 +1211,6 @@
         function renderBoard(board, gameData) {
             const cells = boardElement.querySelectorAll('.cell');
             cells.forEach(el => el.remove());
-            const waitingScreen = boardElement.querySelector('.col-span-5');
-            if(waitingScreen) {
-                if(gameData.status === 'playing') waitingScreen.classList.add('hidden');
-                else waitingScreen.classList.remove('hidden');
-            }
             
             const frag = document.createDocumentFragment();
             for (let r = 0; r < BOARD_SIZE; r++) {
@@ -1421,78 +1243,6 @@
             boardElement.insertBefore(frag, boardElement.firstChild);
         }
 
-        window.toggleFriendSelection = (id) => {
-            if (selectedFriendIds.has(id)) {
-                selectedFriendIds.delete(id);
-            } else {
-                if (selectedFriendIds.size >= 2) {
-                    alert("You can select up to 2 friends.");
-                    return;
-                }
-                selectedFriendIds.add(id);
-            }
-            // Trigger UI update manually by re-rendering queue (simplest way)
-            if(currentQueueDocs) renderQueueList(currentQueueDocs);
-            
-            // Check button visibility
-            if (selectedFriendIds.size === 2) {
-                startFriendsBtn.classList.remove('hidden');
-            } else {
-                startFriendsBtn.classList.add('hidden');
-            }
-        };
-
-        function renderQueueList(docs) {
-            queueCountEl.textContent = docs.length;
-            queueListEl.innerHTML = '';
-            if (docs.length === 0) {
-                queueListEl.innerHTML = '<p class="text-gray-300 text-xs text-center py-8 uppercase tracking-widest">No players waiting</p>';
-                return;
-            }
-            
-            docs.forEach(d => {
-                const isMe = d.id === userId;
-                const nick = d.data().nickname || "Unknown";
-                const el = document.createElement('div');
-                
-                let bgColor = 'bg-white text-gray-600 border-gray-100';
-                
-                // Content with Checkbox for others
-                let contentHTML = ``;
-                
-                if (isMe) {
-                    contentHTML = `<span class="font-bold uppercase">YOU (${nick})</span><span class="text-[10px] uppercase tracking-widest opacity-70">WAITING</span>`;
-                    bgColor = 'bg-black text-white border-black';
-                } else {
-                    const isSelected = selectedFriendIds.has(d.id);
-                    // Add checkbox input
-                    contentHTML = `
-                        <div class="flex items-center gap-3">
-                            <input type="checkbox" class="friend-checkbox" 
-                                   ${isSelected ? 'checked' : ''} 
-                                   onclick="window.toggleFriendSelection('${d.id}')">
-                            <span class="font-bold uppercase ${isSelected ? 'text-black' : ''}">${nick}</span>
-                        </div>
-                        <span class="text-[10px] uppercase tracking-widest opacity-70">WAITING</span>
-                    `;
-                    if (isSelected) bgColor = 'bg-yellow-50 border-yellow-400 text-black';
-                }
-
-                if (isMe && myColor) {
-                    const cInfo = COLOR_MAP[myColor];
-                    const baseColor = cInfo.html_color.match(/\((.*?)\)/)[1].split(', ').map(c => parseInt(c));
-                    const rgbaColor = `rgba(${baseColor[0]}, ${baseColor[1]}, ${baseColor[2]}, 0.9)`;
-                    bgColor = `text-white border-black shadow-md`;
-                    el.style.backgroundColor = rgbaColor;
-                }
-
-                el.className = `queue-item p-3 border text-xs flex justify-between items-center ${bgColor}`;
-                el.innerHTML = contentHTML;
-
-                queueListEl.appendChild(el);
-            });
-        }
-
         function renderScoreboard(players) {
             scoreList.innerHTML = '';
             COLORS.forEach(colorCode => {
@@ -1514,11 +1264,9 @@
         function applyOthello(board, r, c, color) {
             const dirs = [[-1,0],[1,0],[0,-1],[0,1],[-1,-1],[-1,1],[1,-1],[1,1]];
             let flippedCells = [];
-            
             dirs.forEach(([dr, dc]) => {
                 let nr = r + dr, nc = c + dc, flippable = [];
                 let foundOwnColor = false;
-
                 while(nr>=0 && nr<BOARD_SIZE && nc>=0 && nc<BOARD_SIZE) {
                     const cellColor = board[nr][nc];
                     if(cellColor === '') break; 
@@ -1534,12 +1282,6 @@
             return flippedCells;
         }
 
-        function getRandomMove(board) {
-            let empties = [];
-            for(let r=0; r<BOARD_SIZE; r++) for(let c=0; c<BOARD_SIZE; c++) if(board[r][c] === '') empties.push({r,c});
-            return empties.length ? empties[Math.floor(Math.random()*empties.length)] : null;
-        }
-
         function showWinner(players) {
              const winner = Object.values(players).sort((a, b) => b.score - a.score)[0];
              const myScore = players[userId]?.score || 0;
@@ -1551,19 +1293,12 @@
              document.getElementById('message-modal').classList.remove('hidden');
         }
 
-        // NEW: Function to trigger rematch without leaving the game room
+        // Rematch (Restart Game within Game Room)
         window.triggerRematch = async () => {
              document.getElementById('message-modal').classList.add('hidden');
              
-             if (!gameId) {
-                // Should not happen, but safe fallback
-                return;
-             }
+             if (!gameId) return;
              
-             // Visual feedback locally
-             document.getElementById('modal-content').textContent = "Restarting...";
-
-             // Reset logic in Firestore (Transaction to ensure safety)
              const gameRef = doc(db, 'artifacts', appId, 'public', 'data', 'games', gameId);
              const deadLine = Date.now() + FIRST_TURN_DURATION_MS + NETWORK_BUFFER_MS;
              const initialBoard = Array(BOARD_SIZE).fill(0).map(() => Array(BOARD_SIZE).fill(''));
@@ -1572,12 +1307,9 @@
                  await runTransaction(db, async (transaction) => {
                     const sfDoc = await transaction.get(gameRef);
                     if (!sfDoc.exists()) return;
-
                     const data = sfDoc.data();
                     const players = data.players;
                     const newPlayers = {};
-
-                    // Reset score and overwrites for all players
                     for (const pid in players) {
                         newPlayers[pid] = {
                             ...players[pid],
@@ -1586,8 +1318,6 @@
                             lastMove: null
                         };
                     }
-
-                    // Reset game state to Playing, Turn 1
                     transaction.update(gameRef, {
                         status: 'playing',
                         turn: 1,
@@ -1599,25 +1329,16 @@
                  });
              } catch (e) {
                  console.error("Rematch failed:", e);
-                 // Fallback if transaction fails (e.g., permissions or network)
-                 resetLocalStateAndUI();
+                 resetToLobby();
              }
         };
 
         function setupPlayAgainListener() {
             const btn = document.getElementById('modal-play-again');
-            if(btn) {
-                // Changed to call triggerRematch instead of resetLocalStateAndUI
-                btn.onclick = () => window.triggerRematch();
-            }
+            if(btn) btn.onclick = () => window.triggerRematch();
         }
         setupPlayAgainListener();
 
-        function resetUI() {
-            joinBtn.textContent = "Find Match";
-            joinBtn.disabled = true;
-            nicknameInput.disabled = false;
-        }
     </script>
 </body>
 </html>
