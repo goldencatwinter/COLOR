@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>COLOR - Final Optimized (Stable)</title>
+    <title>COLOR - Final Optimized</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700;900&display=swap');
@@ -13,9 +13,10 @@
             background-color: #f0f0f0; 
             color: #1a1a1a;
             -webkit-tap-highlight-color: transparent;
-            /* [FIX] iOS 사파리에서 스크롤 튕김 및 터치 오류 방지 */
+            /* [OPTIMIZED] iOS 스크롤 튕김 및 터치 딜레이 방지 */
             touch-action: manipulation;
             overscroll-behavior: none;
+            user-select: none; /* 텍스트 선택 방지 */
         }
 
         /* --- Animations --- */
@@ -249,7 +250,7 @@
             query, where, getDocs, runTransaction, serverTimestamp, orderBy, limit, deleteField 
         } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
-        // --- [FIX] Sound Manager Optimized for iOS ---
+        // --- [OPTIMIZED] Sound Manager for iOS ---
         window.SoundManager = {
             ctx: null,
             init: function() {
@@ -383,7 +384,6 @@
         let lastProcessedTurn = 0; 
         let isAnimating = false; 
         let pendingBoardState = null; 
-        let pendingGameEndData = null; 
         let selectedFriendIds = new Set(); 
         let currentInvitedGameId = null; 
         
@@ -394,6 +394,9 @@
         
         let isWaitingRoomHost = false;
         let myHostedRoomName = "";
+        
+        // [OPTIMIZED] Timer variable for stability
+        let activeTimerDeadline = 0;
 
         const nicknameInput = document.getElementById('nickname-input');
         const nicknameSection = document.getElementById('nickname-section');
@@ -683,10 +686,11 @@
             watchQueueList(); watchOpenRooms();
             
             queueDocId = null; gameId = null; myColor = null; myOverwritesLeft = MAX_OVERWRITES;
-            lastProcessedTurn = 0; isAnimating = false; pendingBoardState = null; pendingGameEndData = null;
+            lastProcessedTurn = 0; isAnimating = false; pendingBoardState = null;
             selectedCell = null; isResolving = false; lastTimerValue = ""; isMoveCommitted = false; 
             myNickname = ""; selectedFriendIds.clear(); isWaitingRoomHost = false; myHostedRoomName = "";
             currentInvitedGameId = null;
+            activeTimerDeadline = 0; // Reset timer tracking
 
             inviteModal.classList.add('hidden');
             createRoomModal.classList.add('hidden');
@@ -884,7 +888,7 @@
             mobileTimerContainer.classList.remove('hidden');
 
             if (gameData.turn < lastProcessedTurn) {
-                lastProcessedTurn = 0; isAnimating = false; pendingGameEndData = null;
+                lastProcessedTurn = 0; isAnimating = false;
                 document.getElementById('message-modal').classList.add('hidden');
             }
 
@@ -975,46 +979,66 @@
             }, accumulatedDelay);
         }
 
+        // [OPTIMIZED] Timer display logic with stable updates
         function updateTimerDisplay(text) {
             const displayText = isAnimating ? "0" : text;
+            
+            // Only play tick sound if value actually changed
             if(lastTimerValue !== displayText) {
                 if(window.SoundManager && displayText !== "0" && displayText !== "--") window.SoundManager.playTick();
                 lastTimerValue = displayText;
             }
+            
             timerDisplay.textContent = displayText;
             document.getElementById('timer-display-mobile').textContent = displayText;
+            
             const cls = (displayText === "0" || displayText === "--") 
                 ? "font-mono font-bold leading-none text-gray-300"
                 : `font-mono font-bold leading-none ${parseInt(displayText) <= 2 ? 'text-red-600' : 'text-black'}`;
+            
             timerDisplay.className = "text-5xl " + cls;
             document.getElementById('timer-display-mobile').className = "text-4xl " + cls;
         }
 
+        // [OPTIMIZED] Smooth Timer with Throttling
         function runClientTimer(deadline, gameData) {
+            // Prevent timer jitter: if deadline hasn't changed, don't recreate interval
+            if (localTimerInterval && Math.abs(deadline - activeTimerDeadline) < 100) {
+                return; 
+            }
+
             if (localTimerInterval) clearInterval(localTimerInterval);
+            activeTimerDeadline = deadline;
+
             const updateTimer = () => {
-                if (isAnimating) { updateTimerDisplay("0"); return; }
+                if (isAnimating) { 
+                    updateTimerDisplay("0"); 
+                    return; 
+                }
+
                 const now = Date.now();
                 const totalDiff = deadline - now;
                 const visualDiff = totalDiff - NETWORK_BUFFER_MS;
+
                 if (visualDiff <= 500 && !isMoveCommitted && selectedCell) commitCurrentMove();
                 
-                let secondsLeft = Math.ceil(visualDiff / 1000);
-                
-                // [FIX] Force resolution if timer is way past due (Mobile lag compensation)
-                if (secondsLeft < -5 && !isResolving) {
+                // Mobile lag compensation: if way past deadline, force resolution
+                if (Math.ceil(visualDiff / 1000) < -5 && !isResolving) {
                     const isHost = userId === gameData.hostId;
                     if (isHost) resolveTurn(gameData);
                 }
 
-                if (secondsLeft > 0) updateTimerDisplay(secondsLeft.toString());
-                else {
+                if (visualDiff > 0) {
+                    const secondsLeft = Math.ceil(visualDiff / 1000);
+                    updateTimerDisplay(secondsLeft.toString());
+                } else {
                     updateTimerDisplay("0");
                     const isHost = userId === gameData.hostId;
                     const buffer = isHost ? 0 : 3000; 
                     if (!isResolving && now > deadline + buffer) resolveTurn(gameData);
                 }
             };
+
             updateTimer();
             localTimerInterval = setInterval(updateTimer, 100);
         }
@@ -1066,10 +1090,10 @@
             return null;
         }
 
+        // [OPTIMIZED] Safe Turn Resolution with Try-Catch-Finally
         async function resolveTurn(gameData) {
             if (isResolving) return;
             
-            // [FIX] Try-Catch-Finally to prevent Deadlock
             try {
                 isResolving = true;
                 let board = JSON.parse(gameData.board).map(r => [...r]);
@@ -1164,7 +1188,7 @@
             } catch (e) { 
                 console.log("Turn resolution skipped/failed:", e); 
             } finally {
-                // [CRITICAL FIX] Ensure lock is released even if error occurs
+                // [OPTIMIZED] Always release the lock
                 isResolving = false;
             }
             selectedCell = null;
